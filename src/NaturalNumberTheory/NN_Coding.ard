@@ -1,0 +1,145 @@
+\import Algebra.Meta
+\import Data.Array
+\import Data.Fin (fsuc)
+\import Function.Meta
+\import Logic.Meta
+\import Meta
+\import NaturalNumberTheory.NN
+\import Paths
+\import Paths.Meta
+\import decidable.Code
+\import decidable.TermCode
+\import syntax.Context
+\import syntax.Substitution
+\import syntax.Syntax
+\import util.CantorPair
+\import util.NatUtil
+\open Context (variable)
+\open LNN_Syntax (Succ, Zero)
+
+\module NN_Coding \where {
+  \func encode {c c' : Context} : \Pi (f : Formula {LNN} c) -> Term c' => \lam f => natTerm $ codeFormula f
+
+  \func encodeInjective {c c' : Context} {f g : Formula c} (h : encode f = {Term c'} encode g) : f = g
+    => \let h' => natTerm.injective h \in codeFormula.injective h'
+
+  \func codeFunction (_ : LNN.Functions) : Nat
+    | LNN.Plus => 0
+    | LNN.Times => 1
+    | LNN.Succ => 2
+    | LNN.Zero => 3
+    \where {
+      \func injective {f g : LNN.Functions} (h : codeFunction f = codeFunction g) : f = g \elim f, g, h
+        | LNN.Plus, LNN.Plus, h => idp
+        | LNN.Times, LNN.Times, h => idp
+        | LNN.Succ, LNN.Succ, h => idp
+        | LNN.Zero, LNN.Zero, h => idp
+    }
+
+  \func codeRelation (_ : LNN.Relations) : Nat
+    | LNN.LessThan => 0
+    \where {
+      \func injective {r r' : LNN.Relations} (h : codeRelation r = codeRelation r') : r = r'
+      \elim r, r', h
+        | LNN.LessThan, LNN.LessThan, _ => idp
+    }
+
+  \func codeTerm {c : Context} (t : Term {LNN} c) : Nat \elim t
+    | var v => cPair 0 v
+    | apply f args => cPair 1 $ cPair (codeFunction f) $ cArray (\lam i => codeTerm (args i))
+    \where {
+      \func injective {c : Context} {t t' : Term c} (h : codeTerm t = codeTerm t') : t = t'
+      \elim t, t', h
+        | var v, var v1, h => \let h' => (cRecover h).2 \in pmap var $ natEqualIsFinEqual h'
+        | var v, apply f args, h => \let h' => (cRecover h).1 \in contradiction
+        | apply f args, var v, h => \let h' => (cRecover h).1 \in contradiction
+        | apply f args, apply f1 args1, h =>
+          \let
+            | h' => (cRecover h).2
+            | h'' => cRecover h'
+            | f=f1 => codeFunction.injective h''.1
+          \in \case \elim f1, \elim args1, h'', f=f1 \with {
+            | _, args1, h'', idp =>
+              \let
+                | args=args'_coded => cArray.recover h''.2
+              \in pmap (apply f) $
+              ext $
+              ext
+                  (\lam j => \let a=a' => pmap (\lam (z : Array Nat (funArity f)) => DArray.at {z} j) args=args'_coded \in injective a=a')
+          }
+
+      \func natEqualIsFinEqual {n : Nat} {a b : Fin n} (h : a = {Nat} b) : a = {Fin n} b
+      \elim n, a, b, h
+        | suc n, 0, 0, h => idp
+        | suc n, suc a, suc b, h => pmap fsuc (natEqualIsFinEqual $ unsuc h)
+    }
+
+  \func codeFormula {c : Context} (f : Formula {LNN} c) : Nat
+  \elim f
+    | equal a b => cPair 0 $ cPair (codeTerm a) (codeTerm b)
+    | atomic r terms => cPair 1 $ cPair (codeRelation r) $ cArray (\lam i => codeTerm (terms i))
+    | notH f => cPair 2 $ codeFormula f
+    | impH antecedent consequent => cPair 3 $ cPair (codeFormula antecedent) (codeFormula consequent)
+    | forAllH f => cPair 4 $ codeFormula f
+
+    \where {
+      \func injective {c : Context} {f g : Formula c} (h : codeFormula f = codeFormula g) : f = g
+      \elim f, g, h
+        | equal a b, equal a1 b1, h =>
+          \let h' => cRecover (cRecover h).2
+          \in pmap2 equal (codeTerm.injective h'.1) (codeTerm.injective h'.2)
+        | atomic r terms, atomic r1 terms1, h =>
+          \let h' => cRecover (cRecover h).2
+          \in \case \elim r1, \elim terms1, \elim h', codeRelation.injective h'.1 \with {
+            | _, terms1, h', idp =>
+              \let terms=terms'_code => cArray.recover h'.2
+              \in pmap (atomic r) $
+                  ext $
+                  ext (\lam j => \let a=a' => pmap (\lam (z : Array Nat (relArity r)) => z.at j) terms=terms'_code \in codeTerm.injective a=a')
+          }
+        | notH f, notH g, h => pmap notH (injective (cRecover h).2)
+        | impH a1 f1, impH a2 g, h => \let h' => (cRecover h).2 \in pmap2 impH (injective (cRecover h').1) (injective (cRecover h').2)
+        | forAllH f1, forAllH g, h => pmap forAllH (injective (cRecover h).2)
+
+        | equal a b, atomic r terms, h => usingOnly (cRecover h).1 contradiction
+        | equal a b, notH g, h => usingOnly (cRecover h).1 contradiction
+        | equal a b, impH a1 g, h => usingOnly (cRecover h).1 contradiction
+        | equal a b, forAllH g, h => usingOnly (cRecover h).1 contradiction
+        | atomic r terms, equal a b, h => usingOnly (cRecover h).1 contradiction
+        | atomic r terms, notH g, h => usingOnly (cRecover h).1 contradiction
+        | atomic r terms, impH a1 g, h => usingOnly (cRecover h).1 contradiction
+        | atomic r terms, forAllH g, h => usingOnly (cRecover h).1 contradiction
+        | notH f, equal a b, h => usingOnly (cRecover h).1 contradiction
+        | notH f, atomic r terms, h => usingOnly (cRecover h).1 contradiction
+        | notH f, impH a1 g, h => usingOnly (cRecover h).1 contradiction
+        | notH f, forAllH g, h => usingOnly (cRecover h).1 contradiction
+        | impH a1 f1, equal a b, h => usingOnly (cRecover h).1 contradiction
+        | impH a1 f1, atomic r terms, h => usingOnly (cRecover h).1 contradiction
+        | impH a1 f1, notH g, h => usingOnly (cRecover h).1 contradiction
+        | impH a1 f1, forAllH g, h => usingOnly (cRecover h).1 contradiction
+        | forAllH f1, equal a b, h => usingOnly (cRecover h).1 contradiction
+        | forAllH f1, atomic r terms, h => usingOnly (cRecover h).1 contradiction
+        | forAllH f1, notH g, h => usingOnly (cRecover h).1 contradiction
+        | forAllH f1, impH a1 g, h => usingOnly (cRecover h).1 contradiction
+    }
+
+  \func natTerm {c : Context} (n : Nat) : Term {LNN} c \elim n
+    | 0 => Zero
+    | suc n => Succ (natTerm n)
+    \where {
+      \func injective {c : Context} {n n' : Nat} (h : natTerm n = {Term c} natTerm n') : n = n' \elim n, n', h
+        | 0, 0, h => idp
+        | suc n, suc n', h =>
+          \let
+            | dd => LNN -- some struggle with instance
+            | h' => pmap (unhead.headDef anyTerm) (TermCodeDec.code-encode h).2
+          \in pmap suc (injective h')
+
+      \sfunc anyTerm => LNN_Syntax.Zero
+
+      \func substituteNatTerm {c c' : Context} {n : Nat} {s : variable c -> Term c'}
+        : subst.substituteTerm (natTerm n) s = natTerm n \elim n
+        | 0 => idp
+        | suc n => pmap Succ substituteNatTerm
+    }
+}

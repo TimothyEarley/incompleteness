@@ -1,0 +1,7 @@
+\func Context => Nat
+\where {
+  \cons empty : Context => 0
+  \cons inc (c : Context) => suc c
+
+  \func variable (c : Context) => Fin c
+}

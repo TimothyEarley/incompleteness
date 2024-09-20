@@ -1,0 +1,15 @@
+\import Logic
+\import Representation
+\import semantics.Interpretation
+\import syntax.Context
+\import syntax.Syntax
+\open Interpretation
+
+\func Incompleteness
+  {_ : Language}
+  (T : Theory Context.empty)
+  -- assumptions
+  (rep : RepresentsInSelf T)
+  -- ...
+  : \Sigma (f : Sentence) (Not (T ⊧I f)) (Not (T ⊧I notH f))
+  => {?}

@@ -1,0 +1,13 @@
+\import Set
+
+\class CodeDecSet \extends DecSet
+  | Code : E -> E -> \Prop
+  | code-encode {a b : E} (p : a = b) : Code a b
+  | code-decode {a b : E} (c : Code a b) : a = b
+
+  | decideCode (a b : E) : Dec (Code a b)
+
+  | decideEq a b => \case decideCode a b \with {
+    | yes e => yes (code-decode e)
+    | no n => no (\lam p => n (code-encode p))
+  }

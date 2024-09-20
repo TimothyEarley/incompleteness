@@ -1,0 +1,6 @@
+\import Set
+\import syntax.Syntax
+
+\class DecLanguage \extends Language
+  | relDec : DecSet Relations
+  | funDec : DecSet Functions

@@ -1,0 +1,66 @@
+\import Data.Fin
+\import Function.Meta
+\import Paths.Meta
+\import syntax.Context
+\import syntax.Syntax
+\open Context
+
+\func subst {_ : Language} {c : Context} (f : Formula (inc c)) (t : Term c) : Formula c =>
+  substitute f (substOne t)
+
+  \where {
+    \func substOne {_ : Language} {c : Context} (t : Term c) (v : variable (Context.inc c)) : Term c \elim v
+      | 0 => t
+      | suc v => var v
+
+    \func renameTerm {_ : Language} {c c' : Context} (t : Term c) (remap : variable c -> variable c') : Term c'
+    \elim t
+      | var v => var $ remap v
+      | apply f args => apply f (\lam i => renameTerm (args i) remap)
+
+    \func rename {_ : Language} {c c' : Context} (f : Formula c) (remap : variable c -> variable c') : Formula c'
+    \elim f
+      | equal a b => equal (renameTerm a remap) (renameTerm b remap)
+      | atomic r terms => atomic r $ \lam i => renameTerm (terms i) remap
+      | notH f => notH $ rename f remap
+      | impH antecedent consequent => impH (rename antecedent remap) (rename consequent remap)
+      | forAllH f => forAllH $ rename f (\case __ \with {
+        | 0 => zero
+        | suc i => remap i
+      })
+
+    \func substituteTerm {_ : Language} {c c' : Context} (t : Term c) (s : variable c -> Term c') : Term c'
+    \elim t
+      | var v => s v
+      | apply f args => apply f $ \lam i => substituteTerm (args i) s
+
+    \func substitute {_ : Language} {c c' : Context} (f : Formula c) (s : variable c -> Term c') : Formula c'
+    \elim f
+      | equal a b => equal (substituteTerm a s) (substituteTerm b s)
+      | atomic r terms => atomic r $ \lam i => substituteTerm (terms i) s
+      | notH f => notH $ substitute f s
+      | impH antecedent consequent => impH (substitute antecedent s) (substitute consequent s)
+      | forAllH f => forAllH $ substitute f (\case __ \with {
+        | 0 => var zero
+        | suc i => renameTerm (s i) fsuc
+      })
+  }
+
+\func lift {_ : Language} {c : Context} (f : Formula c) : Formula (inc c) => subst.rename f fsuc
+\func liftTerm {_ : Language} {c : Context} (t : Term c) : Term (inc c) => subst.renameTerm t fsuc
+
+\module SubstituteExtensions \where {
+  \open FormulaExtensions
+
+  \func substituteOrH' {_ : Language} {c c' : Context} {a : Array (Formula c)} {s : variable c -> Term c'} :
+    subst.substitute (orH' a) s = orH' (\new DArray {
+      | len => a.len
+      | at j => subst.substitute (a.at j) s
+    }) \elim a
+    | nil => rewrite (\peval orH' nil, \peval orH' (\new Array (Formula c') 0 (\lam _ => subst.substitute trueH s))) idp
+    | a :: l => rewrite (
+      \peval orH' (a :: l),
+      \peval orH' (\new Array (Formula c') (suc (DArray.len {l})) (\lam j => subst.substitute ((::) a l j) s)),
+      substituteOrH'
+    ) $ idp
+}

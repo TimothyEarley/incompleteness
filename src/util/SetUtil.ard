@@ -1,0 +1,17 @@
+\import Data.Array
+\import Logic
+\import Set.Subset
+
+\func element \alias \infix 6 ∈ {X : \Set} (x : X) (S : Set X) : \Prop
+  => S x
+
+\func add {X : \Set} (S : Set X) (x : X) : Set X
+  => \lam y => y ∈ S || (y = x)
+
+\func setOfArray {X : \Set} (a : Array X) : Set X => \lam x => TruncP (Index x a)
+
+\func subsetAdd {X : \Set} {x : X} {S S' : Set X} (h : S ⊆ S') : add S x ⊆ add S' x
+  => \case \elim __ \with {
+    | byLeft a => byLeft (h a)
+    | byRight b => byRight b
+  }

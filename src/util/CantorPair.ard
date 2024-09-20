@@ -1,0 +1,82 @@
+\import Algebra.Meta
+\import Arith.Nat
+\import Function.Meta
+\import Logic.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+
+-- see also https://coq.inria.fr/doc/V8.19.0/stdlib/Coq.Arith.Cantor.html
+
+\open Nat (+)
+
+\sfunc cPair (a b : Nat) : Nat => b + sum (a + b)
+  \where {
+    \func sum (n : Nat) : Nat \elim n
+      | 0 => 0
+      | suc n => suc n + sum n
+  }
+
+\sfunc cUnpair (n : Nat) : \Sigma Nat Nat \elim n
+  | 0 => (0, 0)
+  | suc n => \let (x, y) => cUnpair n \in \case x \with {
+    | 0 => (suc y, 0)
+    | suc x' => (x', suc y)
+  }
+
+\func cRecover {a b c d : Nat} (h : cPair a b = cPair c d) : \Sigma (a = c) (b = d)
+  => \let h' => rewrite (cancelCantorPair, cancelCantorPair) in pmap cUnpair h
+    \in (pmap __.1 h', pmap __.2 h')
+
+\func cancelCantorPair {a b : Nat} : cUnpair (cPair a b) = (a, b) => helper idp
+  \where {
+    \private \func helper {a b n : Nat} (p : cPair a b = n) : cUnpair n = (a, b)
+    \elim n
+      | 0 => \case \elim a, \elim b, \elim p \with {
+        | 0, 0, p => rewrite (\peval cUnpair _, \peval cUnpair 0) idp
+        | suc a1, b1, p => using (rewrite (\peval cPair _ _) in p) contradiction
+        | 0, suc b1, p => using (rewrite (\peval cPair _ _) in p) contradiction
+      }
+      | suc n => \case \elim a, \elim b, \elim p \with {
+        | 0, 0, p => using (rewrite (\peval cPair _ _) in p) contradiction
+        | 0, suc b, p =>
+          \let
+            | p' => rewrite (\peval cPair _ _) in p
+            | prevH : cUnpair n = (1, b) => helper {1} {b} {n} $ rewrite (\peval cPair _ _) linarith
+          \in rewrite (\peval cUnpair (suc n), prevH) idp
+        | suc a, 0, p =>
+          \let
+            | p' => rewrite (\peval cPair _ _) p
+            | prevH : cUnpair n = (0, a) => helper {0} {a} {n} $ rewrite (\peval cPair _ _) linarith
+          \in rewrite (\peval cUnpair (suc n), prevH) idp
+        | suc a, suc b, p =>
+          \let
+            | p' => rewrite (\peval cPair _ _) p
+            | prevH : cUnpair n = (suc $ suc $ a, b) => helper {suc (suc a)} {b} {n} $ rewrite (\peval cPair _ _) linarith
+          \in rewrite (\peval cUnpair (suc n), prevH) idp
+      }
+
+    \func pr1 {a b : Nat} : (cUnpair (cPair a b)).1 = a => pmap __.1 cancelCantorPair
+
+    \func pr2 {a b : Nat} : (cUnpair (cPair a b)).2 = b => pmap __.2 cancelCantorPair
+  }
+
+\func cArray (a : Array Nat) : Nat \elim a
+  | nil => 0
+  | a :: l => cPair a (cArray l)
+  \where {
+    \func decode (n : Nat) (len : Nat) : Array Nat len \elim len
+      | 0 => nil
+      | suc len => \let (a, b) => cUnpair n \in a :: decode b len
+
+    \func cancelArray {l : Nat} {a : Array Nat l} : decode (cArray a) l = a \elim l, a
+      | 0, nil => idp
+      | suc l, a :: a' =>
+        \let
+          | goal : decode (cUnpair (cPair a (cArray a'))).2 l = a' => rewrite cancelCantorPair $ cancelArray
+        \in pmap2 (::) cancelCantorPair.pr1 goal
+
+    \func recover {l : Nat} {a b : Array Nat l} (h : cArray a = cArray b) : a = b
+      => \let h' => rewrite (cancelArray, cancelArray) $ pmap (decode __ l) h
+        \in h'
+  }

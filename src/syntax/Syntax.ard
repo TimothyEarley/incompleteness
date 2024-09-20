@@ -1,0 +1,46 @@
+\import Function.Meta
+\import Set.Subset
+\import syntax.Context
+
+\class Language
+  | Relations : \Set
+  | Functions : \Set
+  | relArity : Relations -> Nat
+  | funArity : Functions -> Nat
+
+\data Term {L : Language} (c : Context)
+  | var (variable c)
+  | apply (f : Functions) (args : Array (Term c) (funArity f))
+\where \open Context
+
+\meta #0 => var 0
+\meta #1 => var 1
+
+\data Formula {L : Language} (c : Context)
+  | equal (a b : Term c)
+  | atomic (r : Relations) (terms : Array (Term c) (relArity r))
+  | notH (f : Formula c)
+  | impH (a b : Formula c)
+  | forAllH (f : Formula (inc c))
+\where \open Context
+
+\module FormulaExtensions \where {
+  \cons trueH {_ : Language} {c : Context} : Formula c => forAllH $ equal #0 #0
+
+  \cons falseH {_ : Language} {c : Context} : Formula c => notH trueH
+
+  \cons orH {_ : Language} {c : Context} (f g : Formula c) : Formula c => impH (notH f) g
+
+  \sfunc orH' {_ : Language} {c : Context} (a : Array (Formula c)) : Formula c \elim a
+    | nil => falseH
+    | a :: l => orH a (orH' l)
+
+  \func andH {_ : Language} {c : Context} (f g : Formula c) : Formula c
+    => notH (impH f (notH g))
+
+  \func equivH {_ : Language} {c : Context} (f g : Formula c) : Formula c => andH (impH f g) (impH g f)
+}
+
+\func Theory {_ : Language} (c : Context) => Set (Formula c)
+
+\func Sentence {_ : Language} => Formula Context.empty

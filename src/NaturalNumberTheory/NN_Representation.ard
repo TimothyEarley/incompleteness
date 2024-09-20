@@ -1,0 +1,75 @@
+\import Data.Array
+\import Data.Or
+\import Function.Meta
+\import Logic
+\import Meta
+\import NaturalNumberTheory.NN
+\import NaturalNumberTheory.NN_Coding
+\import NaturalNumberTheory.NN_RepresentationFormula
+\import Paths
+\import Paths.Meta
+\import Representation
+\import Set
+\import decidable.FormulaCode
+\import proof.Proof
+\import syntax.Context
+\import syntax.Substitution
+\import syntax.Syntax
+\import util.SetUtil
+\open NN_Coding
+
+\func NN_Representation : RepresentsInSelf NN \cowith
+  | rep => representationFormula
+  | toCode => encode
+  | proofMember => proofMember'
+  | proofNotMember => proofNotMember'
+  \where {
+    \func proofMember' (f : Formula 0) (el : f ∈ NN) : Prf NN (subst representationFormula (encode f)) =>
+      \case findFormula f \with {
+        -- in the axioms
+        | inl a => \case \elim f, \elim a \with {
+          | _, (j, idp, _) => run {
+            rewrite representationFormula.substRepresentation,
+            PrfExtensions.prfOrH' (j, idp),
+            refl idp
+          }
+        }
+
+        -- not in the axioms, which is absurd
+        | inr notIndex => absurd $ \case \elim f, \elim el, \elim notIndex \with {
+          | _, inP (i, idp), notIndex => notIndex {i} idp
+        }
+      }
+
+    \func proofNotMember' (f : Formula 0) (nEl : Not (f ∈ NN)) : Prf NN (notH $ subst representationFormula (encode f)) =>
+      \case findFormula f \with {
+        -- in the axioms, which is absurd
+        | inl (j, e, _) => absurd $ nEl (inP (j, inv e))
+
+        -- not the axioms
+        | inr b => run {
+          rewrite representationFormula.substRepresentation,
+          unfold representationFormula.replacedRepresentation,
+
+          PrfExtensions.prfNotOrH' (\lam i =>
+              \let
+                | notEqualFormula : Not (f = NN.axioms.at i) => b {i}
+                | notEqualEncoded : Not (encode f = {Term 0} encode (NN.axioms.at i)) => \lam p => notEqualFormula (encodeInjective p)
+                | prf => prfNotEqualNumbers encodeIsSimpleNumber encodeIsSimpleNumber notEqualEncoded
+              \in prf)
+        }
+      }
+    \where {
+      \func encodeIsSimpleNumber {c : Context} {f : Formula c} : prfNotEqualNumbers.isSimpleNumber (encode f)
+        => natTermIsSimpleNumber
+      \func natTermIsSimpleNumber {n : Nat} : prfNotEqualNumbers.isSimpleNumber (natTerm n)
+        \elim n
+          | 0 => ()
+          | suc n => natTermIsSimpleNumber
+    }
+
+    \func findFormula (f : Formula 0) =>
+      \let
+        | fDec : DecSet (Formula 0) => FormulaCodeDec {LNN}
+      \in find {Formula 0} (\lam f' => dec_decide $ decideEq f f') NN.axioms
+  }

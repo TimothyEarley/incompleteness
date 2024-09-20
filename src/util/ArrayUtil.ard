@@ -1,0 +1,16 @@
+\import Function.Meta
+\import Logic
+\import Paths
+
+\func convertArrayEquality {A : \Type} {l : Nat} {a b : Array A l} (p : a = {Array A} b) : a = {Array A l} b
+\elim l, a, b, p
+  | 0, nil, nil, _ => idp
+  | suc l, a :: a1, a2 :: b, p => pmap2 (::)
+      (transport (\lam (d : Array A) => \case d \with {
+        | nil => Empty
+        | h :: t => a = h
+      }) p idp)
+      (convertArrayEquality $ transport (\lam (d : Array A) => \case d \with {
+        | nil => Empty
+        | h :: t => a1 = t
+      }) p idp)

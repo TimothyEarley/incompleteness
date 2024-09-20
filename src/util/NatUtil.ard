@@ -1,0 +1,20 @@
+\import Function.Meta
+\import Logic
+\import Paths
+
+\func unsuc {a b : Nat} (p : suc a = suc b) : a = b => decode $ encode p
+\where {
+  \func NatCode (a b : Nat) : \Prop
+    | 0, 0 => \Sigma
+    | 0, suc b1 => Empty
+    | suc a1, 0 => Empty
+    | suc a1, suc b1 => NatCode a1 b1
+
+  \func encode {a b : Nat} (p : a = b) : NatCode a b \elim a, b, p
+    | 0, _, idp => ()
+    | suc a, _, idp => encode idp
+
+  \func decode {a b : Nat} (c : NatCode a b) : a = b \elim a, b, c
+    | 0, 0, c => idp
+    | suc a1, suc b1, c => pmap suc $ decode c
+}

@@ -1,0 +1,12 @@
+\import Logic
+\import proof.Proof
+\import syntax.Context
+\import syntax.Substitution
+\import syntax.Syntax
+\import util.SetUtil
+
+\record RepresentsInSelf {L : Language} {c : Context} (T : Theory c)
+  | rep : Formula (Context.inc c)
+  | toCode : Formula c -> Term c
+  | proofMember (f : Formula c) (f ∈ T) : Prf T (subst rep (toCode f))
+  | proofNotMember (f : Formula c) (Not (f ∈ T)) : Prf T (notH (subst rep (toCode f)))

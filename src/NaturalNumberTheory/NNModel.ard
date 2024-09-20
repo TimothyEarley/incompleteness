@@ -1,0 +1,52 @@
+\import Algebra.Meta
+\import Arith.Nat
+\import Function.Meta
+\import Logic
+\import Logic.Meta
+\import NaturalNumberTheory.NN
+\import Order.LinearOrder
+\import semantics.Interpretation
+\import syntax.Context
+\open NatSemiring (<)
+\open Nat (*, +)
+
+\func NNInterpretation : Interpretation {LNN} Context.empty \cowith
+  | structure => \new Structure {
+    | Universe => Nat
+    | rel => \case \elim __, \elim __ \with {
+      | LNN.LessThan, a :: b :: nil  => a < b
+    }
+    | fun => \case \elim __, \elim __ \with {
+      | LNN.Plus, a :: b :: nil => a + b
+      | LNN.Times, a :: b :: nil => a * b
+      | LNN.Succ, a :: nil => suc a
+      | LNN.Zero, nil => 0
+    }
+  }
+  | variableValues _ => contradiction
+
+\func modelsNN : NNInterpretation Interpretation.⊧A NN
+  => \lam {phi} e => \case \elim phi, \elim e \with {
+    | _, inP (0, idp) => \lam _ _ => contradiction
+    | _, inP (1, idp) => \lam _ _ _ => linarith
+    | _, inP (2, idp) => \lam _ => idp
+    | _, inP (3, idp) => \lam _ _ => idp
+    | _, inP (4, idp) => \lam _ => idp
+    | _, inP (5, idp) => \lam _ _ => idp
+    | _, inP (6, idp) => \lam _ _ => contradiction
+    | _, inP (7, idp) => \lam x y (h1 : x < suc y) (_ : Not (y = x)) => \case NatSemiring.trichotomy x y \with {
+      | less l => l
+      | equals p => contradiction
+      | greater g => absurd $ squish g h1
+    }
+    | _, inP (8, idp) => \lam x y _ _ => \case NatSemiring.trichotomy x y \with {
+      | less l => contradiction
+      | equals p => contradiction
+      | greater g => g
+    }
+  }
+  \where {
+    \private \func squish {x y : Nat} (h1 : x < y) (h2 : y < suc x) : Empty \elim x, y, h1, h2
+      | 0, suc y, <.zero<suc, <.suc<suc ()
+      | suc x, suc y, <.suc<suc h1, <.suc<suc h2 => squish h1 h2
+  }

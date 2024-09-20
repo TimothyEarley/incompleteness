@@ -1,0 +1,84 @@
+\import Function.Meta
+\import Logic
+\import Paths
+\import Set
+\import decidable.Code
+\import decidable.DecLanguage
+\import decidable.TermCode
+\import syntax.Context
+\import syntax.Syntax
+\import util.ArrayUtil
+
+\instance FormulaCodeDec {_ : DecLanguage} {c : Context} : CodeDecSet (Formula c)
+  | Code => FormulaCode
+  | code-encode => formulaCode-encode
+  | code-decode => formulaCode-decode
+  | decideCode => formulaCode-decide
+\where {
+  \func FormulaCode {_ : Language} {c : Context} (a b : Formula c) : \Prop \elim a, b
+    | equal a b, equal a1 b1 => \Sigma (a = a1) (b = b1)
+    | atomic r terms, atomic r1 terms1 => \Sigma (r = r1) (terms = {Array (Term c)} terms1)
+    | notH a, notH b => FormulaCode a b
+    | impH a a1, impH b b1 => \Sigma (FormulaCode a b) (FormulaCode a1 b1)
+    | forAllH a, forAllH b => FormulaCode a b
+    | _, _ => Empty
+
+  \func formulaCode-encode {_ : Language} {c : Context} {a b : Formula c} (p : a = b) : FormulaCode a b
+    \elim a, b, p
+      | equal a b, _, idp => (idp, idp)
+      | atomic r terms, _, idp => (idp, idp)
+      | notH a1, _, idp => formulaCode-encode idp
+      | impH a1 a2, _, idp => (formulaCode-encode idp, formulaCode-encode idp)
+      | forAllH a1, _, idp => formulaCode-encode idp
+
+  \func formulaCode-decode {_ : Language} {c : Context} {a b : Formula c} (code : FormulaCode a b) : a = b
+    \elim a, b, code
+      | equal a b1, equal a1 b, (p,p1) => pmap2 equal p p1
+      | atomic r terms, atomic _ terms1, (idp,p1) => pmap (atomic r) (convertArrayEquality p1)
+      | notH a, notH b, code => pmap notH $ formulaCode-decode code
+      | impH a a1, impH b b1, code => pmap2 impH (formulaCode-decode code.1) (formulaCode-decode code.2)
+      | forAllH a, forAllH b, code => pmap forAllH $ formulaCode-decode code
+
+  \func formulaCode-decide {L : DecLanguage} {c : Context} (a b : Formula c) : Dec (FormulaCode a b)
+    \elim a, b
+      | equal a b, equal a1 b1 => \case TermCodeDec.decideEq a a1, TermCodeDec.decideEq b b1 \with {
+        | yes e, yes e1 => yes (e, e1)
+        | _, no n => no (\lam f => n f.2)
+        | no n, _ => no (\lam f => n f.1)
+      }
+      | atomic r terms, atomic r1 terms1 => \case \elim r1, \elim terms1, L.relDec.decideEq r r1 \with {
+        | _, terms1, yes idp => \case TermCodeDec.decideEqArray terms terms1 \with {
+          | yes e => yes (idp, e)
+          | no n => no (\lam f => n f.2)
+        }
+        | _, terms1, no n => no (\lam f => n f.1)
+      }
+      | notH a, notH b => formulaCode-decide a b
+      | impH a a1, impH b b1 => \case formulaCode-decide a b, formulaCode-decide a1 b1 \with {
+        | yes e, yes e1 => yes (e, e1)
+        | _, no n => no (\lam f => n f.2)
+        | no n, _ => no (\lam f => n f.1)
+      }
+      | forAllH a, forAllH b => formulaCode-decide a b
+
+      | equal a b, atomic r terms => no absurd
+      | equal a b, notH b1 => no absurd
+      | equal a b, impH a1 b1 => no absurd
+      | equal a b, forAllH b1 => no absurd
+      | atomic r terms, equal a b => no absurd
+      | atomic r terms, notH b => no absurd
+      | atomic r terms, impH a b => no absurd
+      | atomic r terms, forAllH b => no absurd
+      | notH a, equal a1 b => no absurd
+      | notH a, atomic r terms => no absurd
+      | notH a, impH a1 b1 => no absurd
+      | notH a, forAllH b1 => no absurd
+      | impH a a1, equal a2 b => no absurd
+      | impH a a1, atomic r terms => no absurd
+      | impH a a1, notH b1 => no absurd
+      | impH a a1, forAllH b1 => no absurd
+      | forAllH a, equal a1 b => no absurd
+      | forAllH a, atomic r terms => no absurd
+      | forAllH a, notH b1 => no absurd
+      | forAllH a, impH a1 b1 => no absurd
+}

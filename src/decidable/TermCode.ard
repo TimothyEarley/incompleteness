@@ -1,0 +1,56 @@
+\import Data.Array
+\import Function.Meta
+\import Logic
+\import Paths
+\import Set
+\import Set.Fin
+\import decidable.Code
+\import decidable.DecLanguage
+\import syntax.Context
+\import syntax.Syntax
+\import util.ArrayUtil
+
+\instance TermCodeDec {_ : DecLanguage} {c : Context} : CodeDecSet (Term c)
+  | Code => TermCode
+  | code-encode => termCode-encode
+  | code-decode => termCode-decode
+  | decideCode => termCodeDecide
+
+\where {
+  \func TermCode {_ : Language} {c : Context} (a b : Term c) : \Prop \elim a, b
+    | var v, var v1 => v = v1
+    | var v, apply f args => Empty
+    | apply f args, var v => Empty
+    | apply f args, apply f1 args1 => \Sigma (f = f1) (args = {Array (Term c)} args1)
+
+  \func termCode-encode {_ : Language} {c : Context} {a b : Term c} (p : a = b) : TermCode a b \elim a, b, p
+    | var v, _, idp => idp
+    | apply f args, _, idp => (idp, idp)
+
+  \func termCode-decode {_ : Language} {c : Context} {a b : Term c} (c : TermCode a b) : a = b \elim a, b, c
+    | var v, var v1, idp => idp
+    | apply f args, apply _ args1, (idp, p) => pmap (apply f) (convertArrayEquality p)
+
+  \func termCodeDecide {L : DecLanguage} {c : Context} (x y : Term c) : Dec (TermCode x y) \elim x, y
+    | var v, var v1 => decideEq v v1
+    | var v, apply f args => no absurd
+    | apply f args, var v => no absurd
+    | apply f args, apply f1 args1 => \case \elim f1, \elim args1, L.funDec.decideEq f f1 \with {
+      | _, args1, yes idp => \case decideEqArray args args1 \with {
+        | yes e => yes (idp, e)
+        | no n => no (\lam (_, p) => n p)
+      }
+      | _, args1, no n => no (\lam (p, _) => n p)
+    }
+
+  \func decideEqArray {_ : DecLanguage} {c : Context} (as bs : Array (Term c)) : Dec (as = {Array (Term c)} bs)
+    \elim as, bs
+      | nil, nil => yes idp
+      | nil, a :: l => no (\case __)
+      | a :: as, nil => no (\case __)
+      | a :: as, b :: bs => \case termCodeDecide a b, decideEqArray as bs \with {
+        | yes e, yes e1 => yes $ pmap2 {Term c} {Array (Term c)} (\lam x y => x :: y) (termCode-decode e) e1
+        | no n, _ => no (\lam p => n (termCode-encode (unhead p)))
+        | _, no n => no (\lam p => n $ pmap tail p)
+      }
+}

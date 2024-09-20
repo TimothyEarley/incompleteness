@@ -1,0 +1,105 @@
+\import Data.Array
+\import Function.Meta
+\import Logic
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Set.Subset
+\import semantics.Interpretation
+\import syntax.Context
+\import syntax.Substitution
+\import syntax.Syntax
+\import util.SetUtil
+
+
+-- the type of proofs.
+
+\data Prf {L : Language} {c : Context} (axioms : Theory c) (toShow : Formula c) \elim toShow
+  | toShow => {
+    | AXM (e : toShow ∈ axioms)
+  -- not classical, so needs decider in prdCorrectness
+    -- | PC (psi : Formula c) (Prf (add axioms psi) toShow) (Prf (add axioms (notH psi)) toShow)
+    -- | Ctr (psi : Formula c) (Prf (add axioms (notH toShow)) psi) (Prf (add axioms (notH toShow)) (notH psi))
+    | contra (f : Formula c) (Prf axioms (notH f)) (Prf axioms f)
+    | forAllElim (f : Formula (suc c)) (forAllH f ∈ axioms) (t : Term c) (Prf (add axioms (subst f t)) toShow)
+  }
+  | impH a b => introImp (Prf (add axioms a) b)
+  | equal a b => refl (a = b)
+
+
+  -- TODO what is this rule?
+  -- ¬(¬f -> g) = ¬(f ∨ g) = ¬f ∧ ¬g
+  | notH (impH (notH f) g) => notImp (Prf axioms (notH f)) (Prf axioms (notH g))
+
+  -- more crutches
+  | notH f => notFalse (f = FormulaExtensions.falseH)
+  | notH (equal a b) => notEqual (\Pi (I : Interpretation c) -> Not (Interpretation.evaluate I a = Interpretation.evaluate I b))
+  | notH (equal a b) => notEqualSymm (Prf axioms (notH (equal b a)))
+
+\module PrfExtensions \where {
+  \open FormulaExtensions
+
+  \func weaken {_ : Language} {c : Context} {axioms axioms' : Theory c}
+               {f : Formula c} (prf : Prf axioms' f)
+               (sub : axioms' ⊆ axioms)  : Prf axioms f
+  \elim f, prf
+    | f, AXM e => AXM (sub e)
+    | _, contra f' prf1 prf2 => contra f' (weaken prf1 sub) (weaken prf2 sub)
+    | impH f f1, introImp prf => introImp (weaken prf $ subsetAdd sub)
+    | equal a b, refl p => refl p
+    | notH (impH (notH f) g), notImp h1 h2 => notImp (weaken h1 sub) (weaken h2 sub)
+    | notH _, notFalse idp => notFalse idp
+    | notH (equal a b), notEqual h => notEqual h
+    | f, forAllElim fa e t prf => forAllElim fa (sub e) t (weaken prf (subsetAdd sub))
+    | notH (equal a b), notEqualSymm prf => notEqualSymm (weaken prf sub)
+
+  \func prfNotFalseH {_ : Language} {c : Context} {axioms : Theory c} : Prf axioms (notH falseH) => notFalse idp
+
+  \func prfOrH1 {_ : Language} {c : Context} {axioms : Theory c} {a b : Formula c}
+                (h : Prf axioms a) : Prf axioms (orH a b) =>
+    introImp ((contra a (AXM (byRight idp))) (weaken h (byLeft __)))
+
+  \func prfOrH2 {_ : Language} {c : Context} {axioms : Theory c} {a b : Formula c}
+                (h : Prf axioms b) : Prf axioms (orH a b) => introImp (weaken h (byLeft __))
+
+  \func prfOrH' {_ : Language} {c : Context} {axioms : Theory c} {a : Array (Formula c)}
+                {f : Formula c} (fi : Index f a) (h : Prf axioms f) : Prf axioms (orH' a)
+  \elim a, fi
+    | nil, ((),_)
+    | a :: l, (0,idp) => rewrite (\peval orH' (a :: l)) $ prfOrH1 h
+    | a :: l, (suc i,p) => rewrite (\peval orH' (a :: l)) $ prfOrH2 $ prfOrH' (i,p) h
+
+  \func prfNotOr {_ : Language} {c : Context} {axioms : Theory c} {a b : Formula c}
+                 (h1 : Prf axioms (notH a)) (h2 : Prf axioms (notH b))
+    : Prf axioms (notH (orH a b)) => notImp h1 h2
+
+  \func prfNotOrH' {_ : Language} {c : Context} {axioms : Theory c} {a : Array (Formula c)}
+                   (h : \Pi (i : Fin a.len) -> Prf axioms (notH (a.at i))) : Prf axioms (notH (orH' a))
+  \elim a
+    | nil => rewrite (\peval orH' nil) prfNotFalseH
+    | a :: l => rewrite (\peval orH' (a :: l)) $ prfNotOr (h 0) (prfNotOrH' (\lam i => h (suc i)))
+}
+
+\func prfCorrectness {_ : Language} {c : Context} {axioms : Theory c} {toShow : Formula c}
+                     (prf : Prf axioms toShow)
+  : axioms ⊧I toShow
+\elim toShow, prf
+  | toShow, AXM e => \lam _ m => m e
+  | toShow, contra f prf1 prf2 => \lam I mAxioms => absurd $
+  ⊧.contradict (prfCorrectness prf2 I mAxioms) (prfCorrectness prf1 I mAxioms)
+  | impH a b, introImp prf => \lam I mAxioms mA => prfCorrectness prf I (⊧A.fromAdd mAxioms mA)
+  | equal a b, refl idp => \lam _ _ => idp
+  | notH (impH (notH f) g), notImp h1 h2 => \lam I mAxioms mImp =>
+      \let
+        | h1' => prfCorrectness h1 I mAxioms
+        | h2' => prfCorrectness h2 I mAxioms
+      \in h2' $ mImp $ h1'
+  | notH _, notFalse idp => \lam _ _ mH => mH (\lam _ => idp)
+  | notH (equal a b), notEqual h => \lam I _ evalEqual => h I evalEqual
+  | f, forAllElim fa e t prf => \lam I mAxioms =>
+      \let
+        | goal : I ⊧ subst fa t => ⊧.fromSub (mAxioms e (evaluate I t))
+      \in prfCorrectness prf I (⊧A.fromAdd mAxioms goal)
+  | notH (equal a b), notEqualSymm prf => \lam I mAxioms p => prfCorrectness prf I mAxioms (inv p)
+
+  \where \open Interpretation

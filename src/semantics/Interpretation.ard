@@ -1,0 +1,67 @@
+\import Logic
+\import Set.Subset
+\import syntax.Context
+\import syntax.Substitution
+\import syntax.Syntax
+\import util.SetUtil
+
+\record Structure (L : Language)
+   | Universe : \Set
+   | rel : \Pi (r : Relations) (args : Array Universe (relArity r)) -> \Prop
+   | fun : \Pi (f : Functions) (args : Array Universe (funArity f)) -> Universe
+
+\record Interpretation {L : Language} (c : Context)
+  | structure : Structure L
+  | variableValues : \Pi (Context.variable c) -> structure.Universe
+\where {
+
+  \func extend {_ : Language} {c : Context}
+               (interp : Interpretation c) (u : interp.structure.Universe) : Interpretation (Context.inc c) interp.structure
+    \cowith
+      | variableValues v => \case \elim v \with {
+        | 0 => u
+        | suc v => interp.variableValues v
+      }
+
+  \func evaluate {_ : Language} {c : Context} (interp : Interpretation c) (t : Term c) : interp.structure.Universe
+    \elim t
+      | var v => interp.variableValues v
+      | apply f args => interp.structure.fun f (\lam i => evaluate interp (args i))
+
+
+  \func models \alias \infix 6 ⊧ {_ : Language} {c : Context} (interp : Interpretation c) (f : Formula c) : \Prop
+    \elim f
+      | equal a b => evaluate interp a = evaluate interp b
+      | atomic r terms => interp.structure.rel r (\lam i => evaluate interp (terms i))
+      | notH f => Not (interp ⊧ f)
+      | forAllH f => \Pi (u : interp.structure.Universe) -> (extend interp u) ⊧ f
+      | impH antecedent consequent => interp ⊧ antecedent -> interp ⊧ consequent -- TODO classical?
+  \where {
+    \func contradict {_ : Language} {c : Context} {I : Interpretation c} {f : Formula c}
+                     (h1 : I ⊧ f) (h2 : I ⊧ notH f) : Empty
+      => h2 h1
+
+
+    \func fromSub {_ : Language} {c : Context} {f : Formula (Context.inc c)}
+      {I : Interpretation c} {t : Term c} (h : extend I (evaluate I t) ⊧ f)
+      : I ⊧ subst f t
+      => {?} -- TODO probably needs more generic with global simulatnous subsitute
+  }
+
+
+  \func modelsAll \alias \infix 6 ⊧A {_ : Language} {c : Context} (interp : Interpretation c) (Phi : Theory c) : \Prop
+    => \Pi {phi : Formula c} (phi ∈ Phi) -> interp ⊧ phi
+  \where {
+    \func fromAdd {_ : Language} {c : Context} {I : Interpretation c} {Phi : Theory c} {phi : Formula c}
+      (hPhi : I ⊧A Phi) (hphi : I ⊧ phi) : I ⊧A add Phi phi => \lam {_} e => fromAddHelper hPhi hphi e
+
+    \private \func fromAddHelper {_ : Language} {c : Context} {I : Interpretation c} {Phi : Theory c} {phi : Formula c}
+                                 (hPhi : I ⊧A Phi) (hphi : I ⊧ phi) {f : Formula c} (el : f ∈ add Phi phi) : I ⊧ f
+      \elim el
+        | byLeft a => hPhi a
+        | byRight idp => hphi
+  }
+
+  \func implies \alias \infix 6 ⊧I {_ : Language} {c : Context} (Phi : Theory c) (phi : Formula c)
+    => \Pi (I : Interpretation c) (I ⊧A Phi) -> I ⊧ phi
+}

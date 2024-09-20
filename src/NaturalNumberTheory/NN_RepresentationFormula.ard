@@ -1,0 +1,40 @@
+\import Function.Meta
+\import Meta
+\import NaturalNumberTheory.NN
+\import NaturalNumberTheory.NN_Coding
+\import Paths
+\import Paths.Meta
+\import syntax.Substitution
+\import syntax.Syntax
+\open FormulaExtensions (orH')
+\open NN_Coding (encode)
+
+-- the representaion function is supposed to be true when passed the representation of an axiom beloning to NN and false otherwise
+-- the idea here is to encode the axioms as terms and check for equal to the passed formula
+
+\func representationFormula : Formula {LNN} 1 =>
+  orH' (\new DArray {
+    | len => NN.axioms.len
+    | at j => equal #0 (encode $ NN.axioms.at j)
+  })
+  \where {
+    \func replacedRepresentation (t : Term 0) : Formula 0 => orH' (\new DArray {
+      | len => NN.axioms.len
+      | at j => equal t (encode (NN.axioms.at j))
+    })
+
+    \func substRepresentation {t : Term 0} : subst representationFormula t = replacedRepresentation t => run {
+      unfold (subst, representationFormula),
+      rewrite SubstituteExtensions.substituteOrH',
+      unfold replacedRepresentation,
+      pmap orH',
+      ext,
+      ext,
+      \lam j => run {
+        pmap (equal t),
+        unfold encode,
+        rewrite NN_Coding.natTerm.substituteNatTerm,
+        idp
+      }
+    }
+  }
