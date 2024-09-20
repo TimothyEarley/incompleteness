@@ -30,7 +30,7 @@
       pmap orH',
       ext,
       ext,
-      \lam j => run {
+      \lam _ => run {
         pmap (equal t),
         unfold encode,
         rewrite NN_Coding.natTerm.substituteNatTerm,

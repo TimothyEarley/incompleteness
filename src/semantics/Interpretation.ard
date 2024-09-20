@@ -1,5 +1,4 @@
 \import Logic
-\import Set.Subset
 \import syntax.Context
 \import syntax.Substitution
 \import syntax.Syntax

@@ -1,4 +1,3 @@
-\import Algebra.Meta
 \import Data.Array
 \import Data.Fin (fsuc)
 \import Function.Meta

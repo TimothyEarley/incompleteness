@@ -4,7 +4,7 @@
 
 \func unsuc {a b : Nat} (p : suc a = suc b) : a = b => decode $ encode p
 \where {
-  \func NatCode (a b : Nat) : \Prop
+  \func NatCode (_ _ : Nat) : \Prop
     | 0, 0 => \Sigma
     | 0, suc b1 => Empty
     | suc a1, 0 => Empty
