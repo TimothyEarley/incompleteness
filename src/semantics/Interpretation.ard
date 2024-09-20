@@ -1,8 +1,14 @@
+\import Data.Fin
+\import Function.Meta
 \import Logic
+\import Meta
+\import Paths
+\import Paths.Meta
 \import syntax.Context
 \import syntax.Substitution
 \import syntax.Syntax
 \import util.SetUtil
+\open Context (variable)
 
 \record Structure (L : Language)
    | Universe : \Set
@@ -11,7 +17,7 @@
 
 \record Interpretation {L : Language} (c : Context)
   | structure : Structure L
-  | variableValues : \Pi (Context.variable c) -> structure.Universe
+  | variableValues : \Pi (variable c) -> structure.Universe
 \where {
 
   \func extend {_ : Language} {c : Context}
@@ -44,7 +50,63 @@
     \func fromSub {_ : Language} {c : Context} {f : Formula (Context.inc c)}
       {I : Interpretation c} {t : Term c} (h : extend I (evaluate I t) ⊧ f)
       : I ⊧ subst f t
-      => {?} -- TODO probably needs more generic with global simulatnous subsitute
+      => substitutionLemma<-
+          I {extend I (evaluate I t)} {subst.substOne t}
+          (\lam v => cases v idp)
+          h
+    \where {
+      \func substitutionLemma<- {_ : Language} {c c' : Context} {f : Formula c}
+        (I : Interpretation c') {I' : Interpretation c I.structure} {s : variable c -> Term c'}
+                                -- this makes sure I' is the interpretation we get when replacing I with terms from s
+                                (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v))
+                                (h : I' ⊧ f)
+        : I ⊧ subst.substitute f s
+        \elim f
+          | equal a b => substituteTerm I hI' *> h *> (inv $ substituteTerm I hI')
+          | atomic r terms => transport (rel r) (ext $ ext (\lam _ => inv (substituteTerm I hI'))) h
+          | notH f1 => \lam m => h $ substitutionLemma-> I hI' m
+          | impH a f1 => \lam m => substitutionLemma<- I hI' $ h $ substitutionLemma-> I hI' m
+          | forAllH f1 => \lam u => substitutionLemma<-
+              (extend I u)
+              (\lam (v : variable (Context.inc c)) => \case \elim v \with {
+                | 0 => unfold variableValues idp
+                | suc v => unfold variableValues $ hI' v *> inv extendRenameOne
+              })
+              (h u)
+
+      \func substitutionLemma-> {_ : Language} {c c' : Context} {f : Formula c}
+                                (I : Interpretation c') {I' : Interpretation c I.structure} {s : variable c -> Term c'}
+        -- this makes sure I' is the interpretation we get when replacing I with terms from s
+                                (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v)) (h : I ⊧ subst.substitute f s)
+        : I' ⊧ f
+        \elim f
+          | equal a b => (inv $ substituteTerm I hI') *> h *> substituteTerm I hI'
+          | atomic r terms => transport (rel r) (ext $ ext (\lam _ => substituteTerm I hI')) h
+          | notH f1 => \lam m => h $ substitutionLemma<- I hI' m
+          | impH a f1 => \lam m => substitutionLemma-> I hI' $ h $ substitutionLemma<- I hI' m
+          | forAllH f1 => \lam u => substitutionLemma->
+              (extend I u)
+              (\lam (v : variable (Context.inc c)) => \case \elim v \with {
+                | 0 => unfold variableValues idp
+                | suc v => unfold variableValues $ hI' v *> inv extendRenameOne
+              })
+              (h u)
+
+      \func extendRenameOne {_ : Language} {c : Context} {I : Interpretation c} {u : I.structure.Universe}
+        {t : Term c}
+        : evaluate (extend I u) (subst.renameTerm t fsuc) = evaluate I t
+        \elim t
+          | var v => idp
+          | apply f1 args => pmap (fun f1) (ext $ ext $ (\lam j => extendRenameOne {_} {_} {_} {_} {args j}))
+
+      \func substituteTerm {_ : Language} {c c' : Context} {x : Term c}
+                           (I : Interpretation c') {I' : Interpretation c I.structure} {s : variable c -> Term c'}
+                           (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v))
+        : evaluate I (subst.substituteTerm x s) = evaluate I' x
+        \elim x
+          | var v => inv (hI' v)
+          | apply f1 args => pmap (fun f1) (ext $ ext (\lam j => substituteTerm {_} {c} {c'} {args j} I hI'))
+    }
   }
 
 
