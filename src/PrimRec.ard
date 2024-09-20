@@ -1,0 +1,22 @@
+\data PrimRec (n : Nat)
+  \elim n
+    | 0 => ZeroFunc
+    | 1 => SuccFunc
+    | n => ProjFunc (index : Fin n)
+    | n => ComposeFun (m : Nat) (f : PrimRec m) (fs : Array (PrimRec n) m)
+
+\func evalPrimRec {n : Nat} (p : PrimRec n) (args : Array Nat n) : Nat
+  \elim n, p, args
+    | 0, ZeroFunc, nil => zero
+    | 1, SuccFunc, x :: nil => suc x
+    | n, ProjFunc i, args => args i
+    | n, ComposeFun m f fs, args => evalPrimRec f (\lam i => evalPrimRec (fs i) args)
+
+  \where {
+  -- we have to do weird case splitting because otherwise evalPrimRec does not unfold
+  \func evalProj {n : Nat} {index : Fin n} {args : Array Nat n} : evalPrimRec (ProjFunc index) args = args index
+    \elim n
+      | 0 => idp
+      | 1 => idp
+      | suc (suc n) => idp
+}

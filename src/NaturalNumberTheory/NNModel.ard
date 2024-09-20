@@ -4,11 +4,15 @@
 \import Logic
 \import Logic.Meta
 \import NaturalNumberTheory.NN
+\import NaturalNumberTheory.NN_Coding
 \import Order.LinearOrder
+\import Paths
 \import semantics.Interpretation
 \import syntax.Context
+\import syntax.Syntax
 \open NatSemiring (<)
 \open Nat (*, +)
+\open Interpretation (⊧, ⊧I)
 
 \func NNInterpretation : Interpretation {LNN} Context.empty \cowith
   | structure => \new Structure {
@@ -50,3 +54,8 @@
       | 0, suc y, <.zero<suc, <.suc<suc ()
       | suc x, suc y, <.suc<suc h1, <.suc<suc h2 => squish h1 h2
   }
+
+\func evalNatTerm {n : Nat} : Interpretation.evaluate NNInterpretation (NN_Coding.natTerm n) = n
+  \elim n
+    | 0 => idp
+    | suc n => pmap suc evalNatTerm

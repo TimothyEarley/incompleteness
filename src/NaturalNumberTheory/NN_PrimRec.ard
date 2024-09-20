@@ -1,0 +1,56 @@
+\import Function.Meta
+\import NaturalNumberTheory.NN
+\import NaturalNumberTheory.NNModel
+\import NaturalNumberTheory.NN_Coding
+\import Paths
+\import Paths.Meta
+\import PrimRec
+\import semantics.Interpretation
+\import syntax.Substitution
+\import syntax.Syntax
+\open NN_Coding (natTerm)
+\open LNN_Syntax (Succ, Zero)
+\open Interpretation
+
+\func representPrimRec {n : Nat} (p : PrimRec n) : Formula {LNN} (suc n)
+\elim n, p
+  | 0, ZeroFunc => equal #0 Zero
+  | 1, SuccFunc => equal #0 (Succ #1)
+  | n, ProjFunc index => equal #0 (var (suc index))
+  | n, ComposeFun m p fs => {?}
+
+\where {
+  \func representProj {n : Nat} {index : Fin n} : representPrimRec (ProjFunc index) = equal #0 (var (suc index))
+    \elim n
+      | 0 => idp
+      | 1 => idp
+      | suc (suc n) => idp
+
+    \func correct {n m : Nat} {p : PrimRec n} {args : Array Nat n}
+                  (h : NN ⊧I (subst.substitute (representPrimRec p) (natTerm m :: (\lam v => natTerm $ args v)))) : evalPrimRec p args = m
+    \elim n, p, args
+      | 0, ZeroFunc, nil => inv (h NNInterpretation modelsNN) *> evalNatTerm
+      | 1, SuccFunc, x :: nil => inv $ inv evalNatTerm *> h NNInterpretation modelsNN *> pmap suc evalNatTerm
+      | n, ProjFunc index, args =>
+        \let
+        -- only tricky because the cases to not eliminate automatically to the ProjFunc case
+          | h' => h NNInterpretation modelsNN
+          | h'' => transport (\lam z => NNInterpretation ⊧ subst.substitute z (natTerm m :: \new Array (Term 0) n (\lam v => natTerm (args v)))) representProj h'
+          | h''' => inv evalNatTerm *> h'' *> evalNatTerm
+          | goal : evalPrimRec (ProjFunc index) args = m => rewrite (evalPrimRec.evalProj {n}) $ inv h'''
+        \in goal
+      | n, ComposeFun n' f fs, args => {?}
+
+  \func complete {n : Nat} {p : PrimRec n} {args : Array Nat n}
+      : NN Interpretation.⊧I subst.substitute (representPrimRec p) (natTerm (evalPrimRec p args) :: (\lam v => natTerm $ args v))
+    \elim n, p, args
+      | 0, ZeroFunc, nil => \lam _ _ => idp
+      | 1, SuccFunc, a :: args => \lam _ _  => idp
+      | n, ProjFunc index, args => \lam I _ =>
+          transport2
+          (\lam z z' => I ⊧ subst.substitute z (natTerm z' :: \new Array (Term 0) n (\lam v => natTerm (args v))))
+          (inv representProj)
+          (inv evalPrimRec.evalProj)
+          idp
+      | n, ComposeFun n' f fs, args => {?}
+}

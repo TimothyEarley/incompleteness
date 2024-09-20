@@ -1,15 +1,20 @@
 \import Logic
 \import Representation
-\import semantics.Interpretation
+\import proof.Proof
 \import syntax.Context
 \import syntax.Syntax
-\open Interpretation
+
+\func Consistent {_ : Language} (T : Theory Context.empty) : \Prop
+  => Not (\Pi (f : Sentence) -> Prf T f)
 
 \func Incompleteness
   {_ : Language}
   (T : Theory Context.empty)
   -- assumptions
   (rep : RepresentsInSelf T)
+  (con : Consistent T)
   -- ...
-  : \Sigma (f : Sentence) (Not (T ⊧I f)) (Not (T ⊧I notH f))
-  => {?}
+  : \Sigma (f : Sentence) (Not (Prf T f)) (Not (Prf T (notH f)))
+  => ({?},
+      {?},
+      {?})
