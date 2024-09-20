@@ -35,6 +35,7 @@
   | notH f => notFalse (f = FormulaExtensions.falseH)
   | notH (equal a b) => notEqual (\Pi (I : Interpretation c) -> Not (Interpretation.evaluate I a = Interpretation.evaluate I b))
   | notH (equal a b) => notEqualSymm (Prf axioms (notH (equal b a)))
+  | notH f => notHFromimpH (f' : Formula c) (h : Prf axioms (notH f')) (h' : Prf axioms (impH f f'))
 
 \module PrfExtensions \where {
   \open FormulaExtensions
@@ -52,6 +53,7 @@
     | notH (equal a b), notEqual h => notEqual h
     | f, forAllElim fa e t prf => forAllElim fa (sub e) t (weaken prf (subsetAdd sub))
     | notH (equal a b), notEqualSymm prf => notEqualSymm (weaken prf sub)
+    | notH f, notHFromimpH f' prf prf1 => notHFromimpH f' (weaken prf sub) (weaken prf1 sub)
 
   \func prfNotFalseH {_ : Language} {c : Context} {axioms : Theory c} : Prf axioms (notH falseH) => notFalse idp
 
@@ -101,5 +103,6 @@
         | goal : I ⊧ subst fa t => ⊧.fromSub (mAxioms e (evaluate I t))
       \in prfCorrectness prf I (⊧A.fromAdd mAxioms goal)
   | notH (equal a b), notEqualSymm prf => \lam I mAxioms p => prfCorrectness prf I mAxioms (inv p)
+  | notH f, notHFromimpH f' prf prf1 => \lam I mAxioms mF => prfCorrectness prf I mAxioms (prfCorrectness prf1 I mAxioms mF)
 
   \where \open Interpretation

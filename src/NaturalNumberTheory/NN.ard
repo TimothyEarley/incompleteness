@@ -3,6 +3,7 @@
 \import Logic.Meta
 \import Meta
 \import Paths
+\import Paths.Meta
 \import Set
 \import decidable.DecLanguage
 \import proof.Proof
@@ -40,40 +41,47 @@
 
 \module LNN_Syntax \where {
   \func Zero {c : Context} : Term {LNN} c => apply LNN.Zero nil
+
   \func Succ {c : Context} (x : Term c) : Term {LNN} c => apply LNN.Succ (x :: nil)
+
   \func Plus {c : Context} (x x' : Term c) : Term {LNN} c => apply LNN.Plus (x :: x' :: nil)
+
   \func Times {c : Context} (x x' : Term c) : Term {LNN} c => apply LNN.Times (x :: x' :: nil)
+
   \func Less {c : Context} (x x' : Term c) : Formula {LNN} c => atomic LNN.LessThan (x :: x' :: nil)
 }
 
 \open LNN_Syntax
+
 \func NN : Theory {LNN} Context.empty => setOfArray {Formula Context.empty} axioms
 
-\where {
-  \open FormulaExtensions
-  \func axioms : Array (Formula {LNN} Context.empty) =>
-    (forAllH $ notH (equal (Succ #0) Zero)) :: -- ∀x0. ¬ Sx0 = 0
-    (forAllH $ forAllH $ impH (equal (Succ #1) (Succ #0)) (equal #1 #0) ) :: -- ∀x0. ∀x1. (Sx0 = Sx1 ⇒ x0 = x1)
-    (forAllH $ equal (Plus #0 Zero) #0) :: -- ∀x0. x0 + 0 = x0
-    (forAllH $ forAllH $ equal (Plus #1 (Succ #0)) (Succ (Plus #1 #0))) :: -- ∀x0. ∀x1. x0 + Sx1 = S(x0 + x1)
-    (forAllH $ equal (Times #0 Zero) Zero) :: -- ∀x0. x0 × 0 = 0
-    (forAllH $ forAllH $ equal (Times #1 (Succ #0)) (Plus (Times #1 #0) #1)) :: -- ∀x0. ∀x1. x0 × Sx1 = (x0 × x1) + x0
-    (forAllH $ (notH $ Less #0 Zero)) :: -- ∀x0. ¬x0 < 0
-    (forAllH $ forAllH $ impH (Less #1 (Succ #0)) (orH (equal #0 #1) (Less #1 #0))) :: -- ∀x0. ∀x1. (x0 < Sx1 ⇒ (x0 = x1 ∨ x0 < x1))
-    (forAllH $ forAllH $ orH (Less #1 #0) (orH (equal #1 #0) (Less #0 #1))) :: -- ∀x0. ∀x1. (x0 < x1 ∨ x0 = x1 ∨ x1 < x0)
-    nil
-}
+  \where {
+    \open FormulaExtensions
+
+    \func axioms : Array (Formula {LNN} Context.empty) =>
+      (forAllH $ notH (equal (Succ #0) Zero)) :: -- ∀x0. ¬ Sx0 = 0
+      (forAllH $ forAllH $ impH (equal (Succ #1) (Succ #0)) (equal #1 #0) ) :: -- ∀x0. ∀x1. (Sx0 = Sx1 ⇒ x0 = x1)
+      (forAllH $ equal (Plus #0 Zero) #0) :: -- ∀x0. x0 + 0 = x0
+      (forAllH $ forAllH $ equal (Plus #1 (Succ #0)) (Succ (Plus #1 #0))) :: -- ∀x0. ∀x1. x0 + Sx1 = S(x0 + x1)
+      (forAllH $ equal (Times #0 Zero) Zero) :: -- ∀x0. x0 × 0 = 0
+      (forAllH $ forAllH $ equal (Times #1 (Succ #0)) (Plus (Times #1 #0) #1)) :: -- ∀x0. ∀x1. x0 × Sx1 = (x0 × x1) + x0
+      (forAllH $ (notH $ Less #0 Zero)) :: -- ∀x0. ¬x0 < 0
+      (forAllH $ forAllH $ impH (Less #1 (Succ #0)) (orH (equal #0 #1) (Less #1 #0))) :: -- ∀x0. ∀x1. (x0 < Sx1 ⇒ (x0 = x1 ∨ x0 < x1))
+      (forAllH $ forAllH $ orH (Less #1 #0) (orH (equal #1 #0) (Less #0 #1))) :: -- ∀x0. ∀x1. (x0 < x1 ∨ x0 = x1 ∨ x1 < x0)
+      nil
+  }
 
 \func prfNotEqualNumbers {a b : Term 0} (ha : isSimpleNumber a) (hb : isSimpleNumber b) (h : Not (a = b)) : Prf NN (notH (equal a b))
-  \elim a, b, ha, hb, h
-    | apply LNN.Zero nil, apply LNN.Succ (b :: nil), ha, hb, h =>
-      forAllElim _ (inP (0, idp)) b (notEqualSymm (AXM (byRight idp)))
-    | apply LNN.Succ (a :: nil), apply LNN.Zero nil, ha, hb, h =>
-      forAllElim _ (inP (0, idp)) a (AXM (byRight idp))
-    | apply LNN.Zero nil, apply LNN.Zero nil, ha, hb, h => contradiction
-    | apply LNN.Succ (a :: nil), apply LNN.Succ (b :: nil), ha, hb, h =>
-      \let foo => prfNotEqualNumbers ha hb (\lam p => h (pmap Succ p))
-      \in {?} -- TODO need a prf rule along the lines of proof by contradiciton. Maybe there is a constrive version that works here?
+\elim a, b, ha, hb, h
+  | apply LNN.Zero nil, apply LNN.Succ (b :: nil), ha, hb, h =>
+    forAllElim _ (inP (0, idp)) b (notEqualSymm (AXM (byRight idp)))
+  | apply LNN.Succ (a :: nil), apply LNN.Zero nil, ha, hb, h =>
+    forAllElim _ (inP (0, idp)) a (AXM (byRight idp))
+  | apply LNN.Zero nil, apply LNN.Zero nil, ha, hb, h => contradiction
+  | apply LNN.Succ (a :: nil), apply LNN.Succ (b :: nil), ha, hb, h =>
+    \let
+      | prfA/=B => prfNotEqualNumbers ha hb (\lam p => h (pmap Succ p))
+    \in prfSuc/= prfA/=B
   \where {
     \func isSimpleNumber (_ : Term 0) : \Prop
       | var _ => Empty
@@ -81,4 +89,20 @@
       | apply LNN.Times args => Empty
       | apply LNN.Succ (a :: nil) => isSimpleNumber a
       | apply LNN.Zero nil => \Sigma
+
+    \func prfSuc/= {a b : Term 0} (h : Prf NN (notH (equal a b)))
+      : Prf NN (notH (equal (Succ a) (Succ b))) =>
+      \let
+        | instance : Prf NN (impH (equal (Succ a) (Succ b)) (equal a b)) => run {
+          forAllElim (forAllH $ impH (equal (Succ #1) (Succ #0)) (equal #1 #0)) (inP (1, idp)) a,
+          forAllElim (impH (equal (Succ $ liftTerm a) (Succ #0)) (equal (liftTerm a) #0)) (byRight idp) b,
+          AXM (run {
+            byRight,
+            unfold subst,
+            rewrite liftTerm.subsituteLift,
+            rewriteI liftTerm.subsituteLift,
+            idp
+          })
+        }
+      \in notHFromimpH _ h instance
   }

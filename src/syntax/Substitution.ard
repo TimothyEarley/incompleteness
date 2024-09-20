@@ -1,5 +1,6 @@
 \import Data.Fin
 \import Function.Meta
+\import Paths
 \import Paths.Meta
 \import syntax.Context
 \import syntax.Syntax
@@ -48,6 +49,13 @@
 
 \func lift {_ : Language} {c : Context} (f : Formula c) : Formula (inc c) => subst.rename f fsuc
 \func liftTerm {_ : Language} {c : Context} (t : Term c) : Term (inc c) => subst.renameTerm t fsuc
+    \where {
+      \func subsituteLift {_ : Language} {c : Context} {t t' : Term c}
+        : subst.substituteTerm (liftTerm t) (subst.substOne t') = t
+        \elim t
+          | var v => idp
+          | apply f args => pmap (apply f) (ext $ ext (\lam j => subsituteLift {_} {_} {args j}))
+    }
 
 \module SubstituteExtensions \where {
   \open FormulaExtensions
