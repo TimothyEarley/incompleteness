@@ -1,6 +1,7 @@
 \import Data.Fin
 \import Function.Meta
 \import Logic
+\import Logic.Meta
 \import Meta
 \import Paths
 \import Paths.Meta
@@ -9,120 +10,163 @@
 \import syntax.Syntax
 \import util.SetUtil
 \open Context (variable)
+\open Nat (+)
 
 \record Structure (L : Language)
-   | Universe : \Set
-   | rel : \Pi (r : Relations) (args : Array Universe (relArity r)) -> \Prop
-   | fun : \Pi (f : Functions) (args : Array Universe (funArity f)) -> Universe
+  | Universe : \Set
+  | rel : \Pi (r : Relations) (args : Array Universe (relArity r)) -> \Prop
+  | fun : \Pi (f : Functions) (args : Array Universe (funArity f)) -> Universe
 
 \record Interpretation {L : Language} (c : Context)
   | structure : Structure L
   | variableValues : \Pi (variable c) -> structure.Universe
-\where {
+  \where {
+    \open Substitution
 
-  \func extend {_ : Language} {c : Context}
-               (interp : Interpretation c) (u : interp.structure.Universe) : Interpretation (Context.inc c) interp.structure
+    \func extend {_ : Language} {c : Context}
+                 (interp : Interpretation c) (u : interp.structure.Universe) : Interpretation (Context.inc c) interp.structure
     \cowith
       | variableValues v => \case \elim v \with {
         | 0 => u
         | suc v => interp.variableValues v
       }
 
-  \func evaluate {_ : Language} {c : Context} (interp : Interpretation c) (t : Term c) : interp.structure.Universe
+    \func extend' {_ : Language} {c : Context} (I : Interpretation c) {n : Nat} (us : Array I.structure.Universe n)
+      : Interpretation (n + c) I.structure
+    \elim n, us
+      | 0, nil => I
+      | suc n, a :: us => extend' (extend I a) us
+
+    \func evaluate {_ : Language} {c : Context} (interp : Interpretation c) (t : Term c) : interp.structure.Universe
     \elim t
       | var v => interp.variableValues v
       | apply f args => interp.structure.fun f (\lam i => evaluate interp (args i))
 
-
-  \func models \alias \infix 6 ⊧ {_ : Language} {c : Context} (interp : Interpretation c) (f : Formula c) : \Prop
+    \func models \alias \infix 6 ⊧ {_ : Language} {c : Context} (interp : Interpretation c) (f : Formula c) : \Prop
     \elim f
       | equal a b => evaluate interp a = evaluate interp b
       | atomic r terms => interp.structure.rel r (\lam i => evaluate interp (terms i))
       | notH f => Not (interp ⊧ f)
       | forAllH f => \Pi (u : interp.structure.Universe) -> (extend interp u) ⊧ f
       | impH antecedent consequent => interp ⊧ antecedent -> interp ⊧ consequent -- TODO classical?
-  \where {
-    \func contradict {_ : Language} {c : Context} {I : Interpretation c} {f : Formula c}
-                     (h1 : I ⊧ f) (h2 : I ⊧ notH f) : Empty
-      => h2 h1
+      | cExists f => ∃ (u : interp.structure.Universe) (extend interp u ⊧ f)
+      | cAnd a b => \Sigma (interp ⊧ a) (interp ⊧ b)
+      \where {
+        \func contradict {_ : Language} {c : Context} {I : Interpretation c} {f : Formula c}
+                         (h1 : I ⊧ f) (h2 : I ⊧ notH f) : Empty => h2 h1
 
+        \func fromSub {_ : Language} {c : Context} {f : Formula (Context.inc c)}
+                      {I : Interpretation c} {t : Term c} (h : extend I (evaluate I t) ⊧ f)
+          : I ⊧ subst f t => substitutionLemma<-
+            I {extend I (evaluate I t)} {substOne t}
+            (\lam v => cases v idp)
+            h
+          \where {
+            \func substitutionLemma<- {_ : Language} {c c' : Context} {f : Formula c}
+                                      (I : Interpretation c') {I' : Interpretation c I.structure} {s : Substitution c c'}
+              -- this makes sure I' is the interpretation we get when replacing I with terms from s
+                                      (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v))
+                                      (h : I' ⊧ f)
+              : I ⊧ substitute f s
+            \elim f
+              | equal a b => evaluateSubstituteTerm I hI' *> h *> (inv $ evaluateSubstituteTerm I hI')
+              | atomic r terms => transport (rel r) (ext $ ext (\lam _ => inv (evaluateSubstituteTerm I hI'))) h
+              | notH f1 => \lam m => h $ substitutionLemma-> I hI' m
+              | impH a f1 => \lam m => substitutionLemma<- I hI' $ h $ substitutionLemma-> I hI' m
+              | cAnd a b => (substitutionLemma<- I hI' h.1, substitutionLemma<- I hI' h.2)
+              | forAllH f1 => \lam u => substitutionLemma<-
+                  (extend I u)
+                  (\lam (v : variable (Context.inc c)) => \case \elim v \with {
+                    | 0 => unfold variableValues idp
+                    | suc v => unfold variableValues $ hI' v *> inv extendRenameOne
+                  })
+                  (h u)
+              | cExists f1 => \case \elim h \with {
+                | inP (u, h) => inP (u, substitutionLemma<-
+                    {_} {Context.inc c} {Context.inc c'} {f1}
+                    (extend I u) {extend I' u}
+                    (\lam (v : variable (Context.inc c)) => \case \elim v \with {
+                      | 0 => idp
+                      | suc v => hI' v *> inv extendRenameOne
+                    })
+                    h
+                )
+              }
 
-    \func fromSub {_ : Language} {c : Context} {f : Formula (Context.inc c)}
-      {I : Interpretation c} {t : Term c} (h : extend I (evaluate I t) ⊧ f)
-      : I ⊧ subst f t
-      => substitutionLemma<-
-          I {extend I (evaluate I t)} {subst.substOne t}
-          (\lam v => cases v idp)
-          h
-    \where {
-      \func substitutionLemma<- {_ : Language} {c c' : Context} {f : Formula c}
-        (I : Interpretation c') {I' : Interpretation c I.structure} {s : variable c -> Term c'}
-                                -- this makes sure I' is the interpretation we get when replacing I with terms from s
-                                (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v))
-                                (h : I' ⊧ f)
-        : I ⊧ subst.substitute f s
-        \elim f
-          | equal a b => substituteTerm I hI' *> h *> (inv $ substituteTerm I hI')
-          | atomic r terms => transport (rel r) (ext $ ext (\lam _ => inv (substituteTerm I hI'))) h
-          | notH f1 => \lam m => h $ substitutionLemma-> I hI' m
-          | impH a f1 => \lam m => substitutionLemma<- I hI' $ h $ substitutionLemma-> I hI' m
-          | forAllH f1 => \lam u => substitutionLemma<-
-              (extend I u)
-              (\lam (v : variable (Context.inc c)) => \case \elim v \with {
-                | 0 => unfold variableValues idp
-                | suc v => unfold variableValues $ hI' v *> inv extendRenameOne
-              })
-              (h u)
+            \func substitutionLemma-> {_ : Language} {c c' : Context} {f : Formula c}
+                                      (I : Interpretation c') {I' : Interpretation c I.structure} {s : variable c -> Term c'}
+              -- this makes sure I' is the interpretation we get when replacing I with terms from s
+                                      (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v)) (h : I ⊧ substitute f s)
+              : I' ⊧ f
+            \elim f
+              | equal a b => (inv $ evaluateSubstituteTerm I hI') *> h *> evaluateSubstituteTerm I hI'
+              | atomic r terms => transport (rel r) (ext $ ext (\lam _ => evaluateSubstituteTerm I hI')) h
+              | notH f1 => \lam m => h $ substitutionLemma<- I hI' m
+              | impH a f1 => \lam m => substitutionLemma-> I hI' $ h $ substitutionLemma<- I hI' m
+              | cAnd a b => (substitutionLemma-> I hI' h.1, substitutionLemma-> I hI' h.2)
+              | forAllH f1 => \lam u => substitutionLemma->
+                  (extend I u)
+                  (\lam (v : variable (Context.inc c)) => \case \elim v \with {
+                    | 0 => unfold variableValues idp
+                    | suc v => unfold variableValues $ hI' v *> inv extendRenameOne
+                  })
+                  (h u)
+              | cExists f1 => \case \elim h \with {
+                | inP (u, h) => inP (u, substitutionLemma->
+                    (extend I u) {extend I' u}
+                    (\lam (v : variable (Context.inc c)) => \case \elim v \with {
+                      | 0 => idp
+                      | suc v => hI' v *> inv extendRenameOne
+                    })
+                    h
+                                    )
+              }
 
-      \func substitutionLemma-> {_ : Language} {c c' : Context} {f : Formula c}
-                                (I : Interpretation c') {I' : Interpretation c I.structure} {s : variable c -> Term c'}
-        -- this makes sure I' is the interpretation we get when replacing I with terms from s
-                                (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v)) (h : I ⊧ subst.substitute f s)
-        : I' ⊧ f
-        \elim f
-          | equal a b => (inv $ substituteTerm I hI') *> h *> substituteTerm I hI'
-          | atomic r terms => transport (rel r) (ext $ ext (\lam _ => substituteTerm I hI')) h
-          | notH f1 => \lam m => h $ substitutionLemma<- I hI' m
-          | impH a f1 => \lam m => substitutionLemma-> I hI' $ h $ substitutionLemma<- I hI' m
-          | forAllH f1 => \lam u => substitutionLemma->
-              (extend I u)
-              (\lam (v : variable (Context.inc c)) => \case \elim v \with {
-                | 0 => unfold variableValues idp
-                | suc v => unfold variableValues $ hI' v *> inv extendRenameOne
-              })
-              (h u)
+            \private \func extendRenameOne {_ : Language} {c : Context} {I : Interpretation c} {u : I.structure.Universe}
+                                  {t : Term c}
+              : evaluate (extend I u) (Rename.renameTerm t fsuc) = evaluate I t
+            \elim t
+              | var v => idp
+              | apply f1 args => pmap (fun f1) (ext $ ext $ (\lam j => extendRenameOne {_} {_} {_} {_} {args j}))
 
-      \func extendRenameOne {_ : Language} {c : Context} {I : Interpretation c} {u : I.structure.Universe}
-        {t : Term c}
-        : evaluate (extend I u) (subst.renameTerm t fsuc) = evaluate I t
-        \elim t
-          | var v => idp
-          | apply f1 args => pmap (fun f1) (ext $ ext $ (\lam j => extendRenameOne {_} {_} {_} {_} {args j}))
+            \private \func evaluateSubstituteTerm {_ : Language} {c c' : Context} {x : Term c}
+                                         (I : Interpretation c') {I' : Interpretation c I.structure} {s : variable c -> Term c'}
+                                         (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v))
+              : evaluate I (substituteTerm x s) = evaluate I' x
+            \elim x
+              | var v => inv (hI' v)
+              | apply f1 args => pmap (fun f1) (ext $ ext (\lam j => evaluateSubstituteTerm {_} {c} {c'} {args j} I hI'))
+          }
+      }
 
-      \func substituteTerm {_ : Language} {c c' : Context} {x : Term c}
-                           (I : Interpretation c') {I' : Interpretation c I.structure} {s : variable c -> Term c'}
-                           (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v))
-        : evaluate I (subst.substituteTerm x s) = evaluate I' x
-        \elim x
-          | var v => inv (hI' v)
-          | apply f1 args => pmap (fun f1) (ext $ ext (\lam j => substituteTerm {_} {c} {c'} {args j} I hI'))
+    \func modelsAll \alias \infix 6 ⊧A {_ : Language} {c : Context} (interp : Interpretation c) (Phi : Theory c) : \Prop =>
+      \Pi {phi : Formula c} (phi ∈ Phi) -> interp ⊧ phi
+      \where {
+        \func fromAdd {_ : Language} {c : Context} {I : Interpretation c} {Phi : Theory c} {phi : Formula c}
+                      (hPhi : I ⊧A Phi) (hphi : I ⊧ phi) : I ⊧A add Phi phi => \lam {_} e => fromAddHelper hPhi hphi e
+
+        \private \func fromAddHelper {_ : Language} {c : Context} {I : Interpretation c} {Phi : Theory c} {phi : Formula c}
+                                     (hPhi : I ⊧A Phi) (hphi : I ⊧ phi) {f : Formula c} (el : f ∈ add Phi phi) : I ⊧ f
+        \elim el
+          | byLeft a => hPhi a
+          | byRight idp => hphi
+      }
+
+    \func implies \alias \infix 6 ⊧I {_ : Language} {c : Context} (Phi : Theory c) (phi : Formula c) =>
+      \Pi (I : Interpretation c) (I ⊧A Phi) -> I ⊧ phi
+  }
+
+\module InterprreteExtensions \where {
+  \open FormulaExtensions
+  \open Interpretation
+
+  \func modelsCExists' {_ : Language} {c : Context} {I : Interpretation c} {m : Nat} {f : Formula (m + c)} (h : I ⊧ cExists' m f)
+    : ∃ (a : Array I.structure.Universe m) (Interpretation.extend' I a ⊧ f)
+  \elim m
+    | 0 => \let h' => rewrite (\peval cExists' 0 f) in h \in inP (nil, h')
+    | suc m => \case rewrite (\peval cExists' (suc m) f) h \with {
+        | inP (u, h') => \case modelsCExists' h' \with {
+          | inP (a, h'') => inP (u :: a, h'')
+        }
     }
-  }
-
-
-  \func modelsAll \alias \infix 6 ⊧A {_ : Language} {c : Context} (interp : Interpretation c) (Phi : Theory c) : \Prop
-    => \Pi {phi : Formula c} (phi ∈ Phi) -> interp ⊧ phi
-  \where {
-    \func fromAdd {_ : Language} {c : Context} {I : Interpretation c} {Phi : Theory c} {phi : Formula c}
-      (hPhi : I ⊧A Phi) (hphi : I ⊧ phi) : I ⊧A add Phi phi => \lam {_} e => fromAddHelper hPhi hphi e
-
-    \private \func fromAddHelper {_ : Language} {c : Context} {I : Interpretation c} {Phi : Theory c} {phi : Formula c}
-                                 (hPhi : I ⊧A Phi) (hphi : I ⊧ phi) {f : Formula c} (el : f ∈ add Phi phi) : I ⊧ f
-      \elim el
-        | byLeft a => hPhi a
-        | byRight idp => hphi
-  }
-
-  \func implies \alias \infix 6 ⊧I {_ : Language} {c : Context} (Phi : Theory c) (phi : Formula c)
-    => \Pi (I : Interpretation c) (I ⊧A Phi) -> I ⊧ phi
 }

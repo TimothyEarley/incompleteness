@@ -1,74 +1,133 @@
 \import Data.Fin
+\import Function
 \import Function.Meta
+\import Meta
 \import Paths
 \import Paths.Meta
 \import syntax.Context
+\import syntax.Lift
 \import syntax.Syntax
 \open Context
+\open Nat (+)
 
-\func subst {_ : Language} {c : Context} (f : Formula (inc c)) (t : Term c) : Formula c =>
-  substitute f (substOne t)
+\module Extend \where {
+  \func extend {_ : Language} {c c' : Context} (remap : Rename c c') : Rename (inc c) (inc c') =>
+    \lam v => \case v \with {
+      | 0 => 0
+      | suc f1 => fsuc $ remap f1
+    }
 
+  \func extends {_ : Language} {c c' : Context} (s : Substitution c c') : Substitution (inc c) (inc c') =>
+    var 0 :: (\lam i => liftTerm {_} {1} (s i))
+
+  -- extending means addong an array to the left
+
+  \func extendsN {_ : Language} {c c' : Context} (s : Substitution c c') (n : Nat) : Substitution (n + c) (n + c') \elim n
+    | 0 => s
+    | suc n => extendsN (var 0 :: (\lam v => Rename.renameTerm (s v) fsuc)) n
+}
+
+\func Rename {_ : Language} (c c' : Context) => variable c -> variable c'
   \where {
-    \func substOne {_ : Language} {c : Context} (t : Term c) (v : variable (Context.inc c)) : Term c \elim v
-      | 0 => t
-      | suc v => var v
-
     \func renameTerm {_ : Language} {c c' : Context} (t : Term c) (remap : variable c -> variable c') : Term c'
     \elim t
       | var v => var $ remap v
       | apply f args => apply f (\lam i => renameTerm (args i) remap)
+      \where {
+        \func id {_ : Language} {c : Context} {t : Term c} {remap : variable c -> variable c} (h : \Pi (v : variable c) -> remap v = v)
+          : renameTerm t remap = t
+        \elim t
+          | var v => pmap var $ h v
+          | apply f1 args => pmap (apply f1) $ ext $ ext (\lam j => id {_} {c} {args j} {remap} h)
 
-    \func rename {_ : Language} {c c' : Context} (f : Formula c) (remap : variable c -> variable c') : Formula c'
+        \func compose {_ : Language} {c c' c'' : Context} {t : Term c}
+                      {s : Rename c c'} {s' : Rename c' c''}
+          : renameTerm (renameTerm t s) s' = renameTerm t (s' o s)
+        \elim t
+          | var v => idp
+          | apply f args => pmap (apply f) $ ext $ ext (\lam j => compose {_} {c} {c'} {c''} {args j})
+      }
+
+    \func rename {_ : Language} {c c' : Context} (f : Formula c) (r : Rename c c') : Formula c'
     \elim f
-      | equal a b => equal (renameTerm a remap) (renameTerm b remap)
-      | atomic r terms => atomic r $ \lam i => renameTerm (terms i) remap
-      | notH f => notH $ rename f remap
-      | impH antecedent consequent => impH (rename antecedent remap) (rename consequent remap)
-      | forAllH f => forAllH $ rename f (\case __ \with {
-        | 0 => zero
-        | suc i => remap i
-      })
+      | equal a b => equal (renameTerm a r) (renameTerm b r)
+      | atomic rel terms => atomic rel $ \lam i => renameTerm (terms i) r
+      | notH f => notH $ rename f r
+      | impH antecedent consequent => impH (rename antecedent r) (rename consequent r)
+      | cAnd a b => cAnd (rename a r) (rename b r)
+      | forAllH f => forAllH $ rename f (Extend.extend r)
+      | cExists f => cExists $ rename f (Extend.extend r)
+  }
 
-    \func substituteTerm {_ : Language} {c c' : Context} (t : Term c) (s : variable c -> Term c') : Term c'
+\func Substitution {_ : Language} (c c' : Context) => variable c -> Term c'
+  \where {
+    \open Rename
+
+    \func substituteTerm {_ : Language} {c c' : Context} (t : Term c) (s : Substitution c c') : Term c'
     \elim t
       | var v => s v
       | apply f args => apply f $ \lam i => substituteTerm (args i) s
 
-    \func substitute {_ : Language} {c c' : Context} (f : Formula c) (s : variable c -> Term c') : Formula c'
+    \func substitute {_ : Language} {c c' : Context} (f : Formula c) (s : Substitution c c') : Formula c'
     \elim f
       | equal a b => equal (substituteTerm a s) (substituteTerm b s)
       | atomic r terms => atomic r $ \lam i => substituteTerm (terms i) s
       | notH f => notH $ substitute f s
       | impH antecedent consequent => impH (substitute antecedent s) (substitute consequent s)
+      | cAnd a b => cAnd (substitute a s) (substitute b s)
       | forAllH f => forAllH $ substitute f (\case __ \with {
         | 0 => var zero
         | suc i => renameTerm (s i) fsuc
       })
-  }
+      | cExists f => cExists $ substitute f (\case __ \with {
+        | 0 => var zero
+        | suc i => renameTerm (s i) fsuc
+      }) -- TODO extract funtion
 
-\func lift {_ : Language} {c : Context} (f : Formula c) : Formula (inc c) => subst.rename f fsuc
-\func liftTerm {_ : Language} {c : Context} (t : Term c) : Term (inc c) => subst.renameTerm t fsuc
-    \where {
-      \func subsituteLift {_ : Language} {c : Context} {t t' : Term c}
-        : subst.substituteTerm (liftTerm t) (subst.substOne t') = t
-        \elim t
-          | var v => idp
-          | apply f args => pmap (apply f) (ext $ ext (\lam j => subsituteLift {_} {_} {args j}))
-    }
+    \func subst {_ : Language} {c : Context} (f : Formula (inc c)) (t : Term c) : Formula c =>
+      substitute f (substOne t)
+
+    \func substOne {_ : Language} {c : Context} (t : Term c) (v : variable (Context.inc c)) : Term c \elim v
+      | 0 => t
+      | suc v => var v
+  }
 
 \module SubstituteExtensions \where {
   \open FormulaExtensions
+  \open Substitution
 
-  \func substituteOrH' {_ : Language} {c c' : Context} {a : Array (Formula c)} {s : variable c -> Term c'} :
-    subst.substitute (orH' a) s = orH' (\new DArray {
+  \func substituteOrH' {_ : Language} {c c' : Context} {a : Array (Formula c)} {s : Substitution c c'} :
+    substitute (orH' a) s = orH' (\new DArray {
       | len => a.len
-      | at j => subst.substitute (a.at j) s
+      | at j => substitute (a.at j) s
     }) \elim a
-    | nil => rewrite (\peval orH' nil, \peval orH' (\new Array (Formula c') 0 (\lam _ => subst.substitute trueH s))) idp
+    | nil => rewrite (\peval orH' nil, \peval orH' (\new Array (Formula c') 0 (\lam _ => substitute trueH s))) idp
     | a :: l => rewrite (
       \peval orH' (a :: l),
-      \peval orH' (\new Array (Formula c') (suc (DArray.len {l})) (\lam j => subst.substitute ((::) a l j) s)),
+      \peval orH' (\new Array (Formula c') (suc (DArray.len {l})) (\lam j => substitute ((::) a l j) s)),
       substituteOrH'
     ) $ idp
+
+  \func subsituteCExists' {_ : Language} {c c' : Context} {n : Nat} {f : Formula (n + c)} {s : Substitution c c'} :
+    substitute (cExists' n f) s = cExists' n (substitute f $ Extend.extendsN s n)
+  \elim n
+    | 0 => rewrite (\peval cExists' 0 f, \peval cExists' 0 _) idp
+    | suc n => run {
+      transport
+          (\lam z => substitute z s = cExists' (suc n) (substitute f (Extend.extendsN (var 0 :: \new Array (Term (suc c')) c (\lam (v : Fin c) => Rename.renameTerm (s v) fsuc)) n)))
+          (inv $ \peval cExists' (suc n) f),
+      transport
+          (\lam z => cExists (substitute (cExists' n f) (\lam (p0 : variable (inc c)) => \case p0 \with {
+            | zero => var 0
+            | suc i => Rename.renameTerm (s i) fsuc
+          })) = z)
+          (inv $ \peval cExists' (suc n) _),
+      pmap cExists,
+      (*>) subsituteCExists',
+      pmap (cExists' n),
+      pmap (substitute f),
+      pmap (Extend.extendsN __ n),
+      ext,
+      \lam i => cases i idp
+    }
 }

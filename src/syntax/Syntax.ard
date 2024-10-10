@@ -1,6 +1,7 @@
 \import Function.Meta
 \import Set.Subset
 \import syntax.Context
+\open Nat (+)
 
 \class Language
   | Relations : \Set
@@ -21,7 +22,9 @@
   | atomic (r : Relations) (terms : Array (Term c) (relArity r))
   | notH (f : Formula c)
   | impH (a b : Formula c)
+  | cAnd (a b : Formula c) -- construtively and
   | forAllH (f : Formula (inc c))
+  | cExists (f : Formula (inc c)) -- constructively exists (truncated)
 \where \open Context
 
 \module FormulaExtensions \where {
@@ -35,10 +38,16 @@
     | nil => falseH
     | a :: l => orH a (orH' l)
 
-  \func andH {_ : Language} {c : Context} (f g : Formula c) : Formula c
-    => notH (impH f (notH g))
+  \sfunc cAndH' {_ : Language} {c : Context} (a : Array (Formula c)) : Formula c \elim a
+    | nil => trueH
+    | a :: l => cAnd a (cAndH' l)
 
-  \func equivH {_ : Language} {c : Context} (f g : Formula c) : Formula c => andH (impH f g) (impH g f)
+  \func equivH {_ : Language} {c : Context} (f g : Formula c) : Formula c => cAnd (impH f g) (impH g f)
+
+  \sfunc cExists' {_ : Language} {c : Context} (n : Nat) (f : Formula (n + c)) : Formula c
+  \elim n
+    | 0 => f
+    | suc n => cExists $ cExists' n f
 }
 
 \func Theory {_ : Language} (c : Context) => Set (Formula c)

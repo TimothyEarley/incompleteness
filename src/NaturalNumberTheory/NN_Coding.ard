@@ -1,5 +1,5 @@
 \import Data.Array
-\import Data.Fin (fsuc)
+\import Data.Fin (nat_fin_=)
 \import Function.Meta
 \import Logic.Meta
 \import Meta
@@ -12,8 +12,6 @@
 \import syntax.Substitution
 \import syntax.Syntax
 \import util.CantorPair
-\import util.NatUtil
-\open Context (variable)
 \open LNN_Syntax (Succ, Zero)
 
 \module NN_Coding \where {
@@ -49,7 +47,7 @@
     \where {
       \func injective {c : Context} {t t' : Term c} (h : codeTerm t = codeTerm t') : t = t'
       \elim t, t', h
-        | var v, var v1, h => \let h' => (cRecover h).2 \in pmap var $ natEqualIsFinEqual h'
+        | var v, var v1, h => \let h' => (cRecover h).2 \in pmap var $ nat_fin_= h'
         | var v, apply f args, h => \let h' => (cRecover h).1 \in contradiction
         | apply f args, var v, h => \let h' => (cRecover h).1 \in contradiction
         | apply f args, apply f1 args1, h =>
@@ -66,11 +64,6 @@
               ext
                   (\lam j => \let a=a' => pmap (\lam (z : Array Nat (funArity f)) => DArray.at {z} j) args=args'_coded \in injective a=a')
           }
-
-      \func natEqualIsFinEqual {n : Nat} {a b : Fin n} (h : a = {Nat} b) : a = {Fin n} b
-      \elim n, a, b, h
-        | suc n, 0, 0, h => idp
-        | suc n, suc a, suc b, h => pmap fsuc (natEqualIsFinEqual $ unsuc h)
     }
 
   \func codeFormula {c : Context} (f : Formula {LNN} c) : Nat
@@ -79,7 +72,9 @@
     | atomic r terms => cPair 1 $ cPair (codeRelation r) $ cArray (\lam i => codeTerm (terms i))
     | notH f => cPair 2 $ codeFormula f
     | impH antecedent consequent => cPair 3 $ cPair (codeFormula antecedent) (codeFormula consequent)
-    | forAllH f => cPair 4 $ codeFormula f
+    | cAnd a b => cPair 4 $ cPair (codeFormula a) (codeFormula b)
+    | forAllH f => cPair 5 $ codeFormula f
+    | cExists f => cPair 6 $ codeFormula f
 
     \where {
       \func injective {c : Context} {f g : Formula c} (h : codeFormula f = codeFormula g) : f = g
@@ -98,7 +93,9 @@
           }
         | notH f, notH g, h => pmap notH (injective (cRecover h).2)
         | impH a1 f1, impH a2 g, h => \let h' => (cRecover h).2 \in pmap2 impH (injective (cRecover h').1) (injective (cRecover h').2)
+        | cAnd a1 f1, cAnd a2 g, h => \let h' => (cRecover h).2 \in pmap2 cAnd (injective (cRecover h').1) (injective (cRecover h').2)
         | forAllH f1, forAllH g, h => pmap forAllH (injective (cRecover h).2)
+        | cExists f1, cExists g, h => pmap cExists (injective (cRecover h).2)
 
         | equal a b, atomic r terms, h => usingOnly (cRecover h).1 contradiction
         | equal a b, notH g, h => usingOnly (cRecover h).1 contradiction
@@ -120,6 +117,28 @@
         | forAllH f1, atomic r terms, h => usingOnly (cRecover h).1 contradiction
         | forAllH f1, notH g, h => usingOnly (cRecover h).1 contradiction
         | forAllH f1, impH a1 g, h => usingOnly (cRecover h).1 contradiction
+        | equal a b, cExists g, h => usingOnly (cRecover h).1 contradiction
+        | atomic r terms, cExists g, h => usingOnly (cRecover h).1 contradiction
+        | notH f, cExists g, h => usingOnly (cRecover h).1 contradiction
+        | impH f f1, cExists g, h => usingOnly (cRecover h).1 contradiction
+        | forAllH f, cExists g, h => usingOnly (cRecover h).1 contradiction
+        | cExists f, equal a b, h => usingOnly (cRecover h).1 contradiction
+        | cExists f, atomic r terms, h => usingOnly (cRecover h).1 contradiction
+        | cExists f, notH g, h => usingOnly (cRecover h).1 contradiction
+        | cExists f, impH a g, h => usingOnly (cRecover h).1 contradiction
+        | cExists f, forAllH g, h => usingOnly (cRecover h).1 contradiction
+        | equal a b, cAnd a1 g, h => usingOnly (cRecover h).1 contradiction
+        | atomic r terms, cAnd a g, h => usingOnly (cRecover h).1 contradiction
+        | notH f, cAnd a g, h => usingOnly (cRecover h).1 contradiction
+        | impH f f1, cAnd a g, h => usingOnly (cRecover h).1 contradiction
+        | cAnd f f1, equal a b, h => usingOnly (cRecover h).1 contradiction
+        | cAnd f f1, atomic r terms, h => usingOnly (cRecover h).1 contradiction
+        | cAnd f f1, notH g, h => usingOnly (cRecover h).1 contradiction
+        | cAnd f f1, impH a g, h => usingOnly (cRecover h).1 contradiction
+        | cAnd f f1, forAllH g, h => usingOnly (cRecover h).1 contradiction
+        | cAnd f f1, cExists g, h => usingOnly (cRecover h).1 contradiction
+        | forAllH f, cAnd a g, h => usingOnly (cRecover h).1 contradiction
+        | cExists f, cAnd a g, h => usingOnly (cRecover h).1 contradiction
     }
 
   \func natTerm {c : Context} (n : Nat) : Term {LNN} c \elim n
@@ -136,8 +155,8 @@
 
       \sfunc anyTerm => LNN_Syntax.Zero
 
-      \func substituteNatTerm {c c' : Context} {n : Nat} {s : variable c -> Term c'}
-        : subst.substituteTerm (natTerm n) s = natTerm n \elim n
+      \func substituteNatTerm {c c' : Context} {n : Nat} {s : Substitution c c'}
+        : Substitution.substituteTerm (natTerm n) s = natTerm n \elim n
         | 0 => idp
         | suc n => pmap Succ substituteNatTerm
     }

@@ -19,4 +19,12 @@
       | 0 => idp
       | 1 => idp
       | suc (suc n) => idp
-}
+
+    \func evalCompose {n m : Nat} {f : PrimRec m} (fs : Array (PrimRec n) m) {args : Array Nat n} : evalPrimRec (ComposeFun m f fs) args = evalPrimRec f (\lam i => evalPrimRec (fs i) args)
+    \elim n
+      | 0 => idp
+      | 1 => idp
+      | suc (suc n) => idp
+
+
+  }

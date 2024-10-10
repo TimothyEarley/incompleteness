@@ -23,8 +23,8 @@
       | at j => equal t (encode (NN.axioms.at j))
     })
 
-    \func substRepresentation {t : Term 0} : subst representationFormula t = replacedRepresentation t => run {
-      unfold (subst, representationFormula),
+    \func substRepresentation {t : Term 0} : Substitution.subst representationFormula t = replacedRepresentation t => run {
+      unfold (Substitution.subst, representationFormula),
       rewrite SubstituteExtensions.substituteOrH',
       unfold replacedRepresentation,
       pmap orH',

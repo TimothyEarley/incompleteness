@@ -1,0 +1,63 @@
+\import Data.Fin
+\import Function.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+\import syntax.Context
+\import syntax.Substitution
+\import syntax.Syntax
+\open Nat (+)
+
+-- adds extra context to the end
+-- so if the term uses the variables x0 x1 x2 and we lift by 3, then the context becomes x0 x1 x2 y0 y1 y2
+-- and the term uses the correct variables, i.e. at the bottom x2 goes from 0 to 3
+
+-- lifting a fin from n to m corresponds to expand-fin-right delta
+\private \func liftFin {delta n : Nat} (i : Fin n) : Fin (delta + n)
+  \elim delta
+    | 0 => i
+    | suc delta => fsuc $ liftFin i
+  \where {
+    \private \func isActuallyJustAddition {delta n : Nat} {i : Fin n} : liftFin {delta} i = {Nat} delta + i
+      \elim delta
+        | 0 => idp
+        | suc delta => pmap suc isActuallyJustAddition
+  }
+
+
+\func liftTerm {_ : Language} {delta c : Context} (t : Term c) : Term (delta + c) =>
+  Rename.renameTerm t (liftFin __)
+\where {
+  \func liftTerm0 {_ : Language} {c : Context} {t : Term c} : liftTerm {_} {0} t = t
+    => unfold liftTerm (Rename.renameTerm.id (\lam _ => idp))
+
+  \func compose1 {_ : Language} {c m : Context} {t : Term c}
+    : liftTerm {_} {1} {m + c} (liftTerm {_} {m} {c} t) = liftTerm {_} {suc m} {c} t
+    => unfold liftTerm Rename.renameTerm.compose
+}
+
+\private \func liftFormula {_ : Language} {delta c : Context} (f : Formula c) : Formula (delta + c) =>
+  Rename.rename f (\lam v => liftFin v)
+  \where {
+    \private \func example {_ : Language} :
+      liftFormula {_} {2} (forAllH $ forAllH (equal #0 #1)) = {Formula 5}
+      (forAllH $ forAllH $ equal #0 #1) => idp
+  }
+
+\func subsituteLiftTerm1 {_ : Language} {c : Context} {t t' : Term c}
+  : Substitution.substituteTerm (liftTerm {_} {1} t) (Substitution.substOne t') = t
+  \elim t
+    | var v => idp
+    | apply f args => pmap (apply f) (ext $ ext (\lam j => subsituteLiftTerm1 {_} {c} {args j} {t'}))
+
+\func subsituteLiftTerm1' {_ : Language} {c : Context} {t t' : Term c}
+  : Substitution.substituteTerm (Rename.renameTerm t fsuc) (Substitution.substOne t') = t
+  => subsituteLiftTerm1
+
+-- pad is the opposite of lift, instead of adding context at the end and thus increasing
+-- the existing, pad adds prior past context to the start and thus does nothing akin
+-- to expand-fin-left
+\func padFin {delta n : Nat} (i : Fin n) : Fin (n + delta)
+  \elim n, i
+    | suc n, 0 => 0
+    | suc n, suc i => fsuc $ padFin i

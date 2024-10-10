@@ -8,6 +8,7 @@
 \import decidable.DecLanguage
 \import proof.Proof
 \import syntax.Context
+\import syntax.Lift
 \import syntax.Substitution
 \import syntax.Syntax
 \import util.SetUtil
@@ -98,9 +99,9 @@
           forAllElim (impH (equal (Succ $ liftTerm a) (Succ #0)) (equal (liftTerm a) #0)) (byRight idp) b,
           AXM (run {
             byRight,
-            unfold subst,
-            rewrite liftTerm.subsituteLift,
-            rewriteI liftTerm.subsituteLift,
+            unfold Substitution.subst,
+            rewrite subsituteLiftTerm1,
+            rewriteI subsituteLiftTerm1',
             idp
           })
         }

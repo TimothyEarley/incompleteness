@@ -4,6 +4,7 @@
 \import syntax.Substitution
 \import syntax.Syntax
 \import util.SetUtil
+\open Substitution (subst)
 
 \record RepresentsInSelf {L : Language} {c : Context} (T : Theory c)
   | rep : Formula (Context.inc c)

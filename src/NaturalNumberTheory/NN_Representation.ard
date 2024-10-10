@@ -24,7 +24,7 @@
   | proofMember => proofMember'
   | proofNotMember => proofNotMember'
   \where {
-    \func proofMember' (f : Formula 0) (el : f ∈ NN) : Prf NN (subst representationFormula (encode f)) =>
+    \func proofMember' (f : Formula 0) (el : f ∈ NN) : Prf NN (Substitution.subst representationFormula (encode f)) =>
       \case findFormula f \with {
         -- in the axioms
         | inl a => \case \elim f, \elim a \with {
@@ -41,7 +41,7 @@
         }
       }
 
-    \func proofNotMember' (f : Formula 0) (nEl : Not (f ∈ NN)) : Prf NN (notH $ subst representationFormula (encode f)) =>
+    \func proofNotMember' (f : Formula 0) (nEl : Not (f ∈ NN)) : Prf NN (notH $ Substitution.subst representationFormula (encode f)) =>
       \case findFormula f \with {
         -- in the axioms, which is absurd
         | inl (j, e, _) => absurd $ nEl (inP (j, inv e))

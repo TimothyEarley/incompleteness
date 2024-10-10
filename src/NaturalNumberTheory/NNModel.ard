@@ -9,10 +9,8 @@
 \import Paths
 \import semantics.Interpretation
 \import syntax.Context
-\import syntax.Syntax
 \open NatSemiring (<)
 \open Nat (*, +)
-\open Interpretation (⊧, ⊧I)
 
 \func NNInterpretation : Interpretation {LNN} Context.empty \cowith
   | structure => \new Structure {

@@ -20,7 +20,9 @@
     | atomic r terms, atomic r1 terms1 => \Sigma (r = r1) (terms = {Array (Term c)} terms1)
     | notH a, notH b => FormulaCode a b
     | impH a a1, impH b b1 => \Sigma (FormulaCode a b) (FormulaCode a1 b1)
+    | cAnd a a1, cAnd b b1 => \Sigma (FormulaCode a b) (FormulaCode a1 b1)
     | forAllH a, forAllH b => FormulaCode a b
+    | cExists a, cExists b => FormulaCode a b
     | _, _ => Empty
 
   \func formulaCode-encode {_ : Language} {c : Context} {a b : Formula c} (p : a = b) : FormulaCode a b
@@ -29,7 +31,9 @@
       | atomic r terms, _, idp => (idp, idp)
       | notH a1, _, idp => formulaCode-encode idp
       | impH a1 a2, _, idp => (formulaCode-encode idp, formulaCode-encode idp)
+      | cAnd a1 a2, _, idp => (formulaCode-encode idp, formulaCode-encode idp)
       | forAllH a1, _, idp => formulaCode-encode idp
+      | cExists a, _, idp => formulaCode-encode idp
 
   \func formulaCode-decode {_ : Language} {c : Context} {a b : Formula c} (code : FormulaCode a b) : a = b
     \elim a, b, code
@@ -37,7 +41,9 @@
       | atomic r terms, atomic _ terms1, (idp,p1) => pmap (atomic r) (convertArrayEquality p1)
       | notH a, notH b, code => pmap notH $ formulaCode-decode code
       | impH a a1, impH b b1, code => pmap2 impH (formulaCode-decode code.1) (formulaCode-decode code.2)
+      | cAnd a a1, cAnd b b1, code => pmap2 cAnd (formulaCode-decode code.1) (formulaCode-decode code.2)
       | forAllH a, forAllH b, code => pmap forAllH $ formulaCode-decode code
+      | cExists a, cExists b, code => pmap cExists $ formulaCode-decode code
 
   \func formulaCode-decide {L : DecLanguage} {c : Context} (a b : Formula c) : Dec (FormulaCode a b)
     \elim a, b
@@ -59,7 +65,13 @@
         | _, no n => no (\lam f => n f.2)
         | no n, _ => no (\lam f => n f.1)
       }
+      | cAnd a a1, cAnd b b1 => \case formulaCode-decide a b, formulaCode-decide a1 b1 \with {
+        | yes e, yes e1 => yes (e, e1)
+        | _, no n => no (\lam f => n f.2)
+        | no n, _ => no (\lam f => n f.1)
+      }
       | forAllH a, forAllH b => formulaCode-decide a b
+      | cExists a, cExists b => formulaCode-decide a b
 
       | equal a b, atomic r terms => no absurd
       | equal a b, notH b1 => no absurd
@@ -81,4 +93,26 @@
       | forAllH a, atomic r terms => no absurd
       | forAllH a, notH b1 => no absurd
       | forAllH a, impH a1 b1 => no absurd
+      | equal a b, cExists b1 => no absurd
+      | atomic r terms, cExists b => no absurd
+      | notH a, cExists b => no absurd
+      | impH a a1, cExists b => no absurd
+      | forAllH a, cExists b => no absurd
+      | cExists a, equal a1 b => no absurd
+      | cExists a, atomic r terms => no absurd
+      | cExists a, notH b => no absurd
+      | cExists a, impH a1 b => no absurd
+      | cExists a, forAllH b => no absurd
+      | equal a b, cAnd a1 b1 => no absurd
+      | atomic r terms, cAnd a b => no absurd
+      | notH a, cAnd a1 b => no absurd
+      | impH a a1, cAnd a2 b => no absurd
+      | cAnd a a1, equal a2 b => no absurd
+      | cAnd a a1, atomic r terms => no absurd
+      | cAnd a a1, notH b => no absurd
+      | cAnd a a1, impH a2 b => no absurd
+      | cAnd a a1, forAllH b => no absurd
+      | cAnd a a1, cExists b => no absurd
+      | forAllH a, cAnd a1 b => no absurd
+      | cExists a, cAnd a1 b => no absurd
 }

@@ -1,6 +1,8 @@
+\import Data.Array
 \import Function.Meta
 \import Logic
 \import Paths
+\import Paths.Meta
 
 \func convertArrayEquality {A : \Type} {l : Nat} {a b : Array A l} (p : a = {Array A} b) : a = {Array A l} b
 \elim l, a, b, p
@@ -14,3 +16,25 @@
         | nil => Empty
         | h :: t => a1 = t
       }) p idp)
+
+\func \infixl 6 ++'' {A : \Type} {n m : Nat} (a : Array A n) (b : Array A m) : Array A (n Nat.+ m)
+  => a ++' b
+
+\func map'_++ {A B : \Type} (f : A -> B) {n m : Nat}
+              {a : Array A n} {a' : Array B n}
+              {b : Array A m} {b' : Array B m}
+              (p1 : map f a = a') (p2 : map f b = b')
+              {j : Fin (n Nat.+ m)}
+  : f ((a ++' b) j) = {B} (a' ++' b') j
+  \elim n, a, a', b', p1, p2, j
+    | 0, nil, _, _, idp, idp, j => idp
+    | suc n, a, _, _, idp, idp, 0 => idp
+    | suc n, _ :: a, _, _, idp, idp, suc j => map'_++ f {n} {m} {a} idp idp
+\where {
+  \func easier {A B : \Type} (f : A -> B) {n m : Nat}
+               {a : Array A n} {a' : Array B n}
+               {b : Array A m} {b' : Array B m}
+               (p1 : \Pi (j : Fin n) -> f (a j) = a' j) (p2 :\Pi (j : Fin m) -> f (b j) = b' j)
+               {j : Fin (n Nat.+ m)} : f ((a ++' b) j) = {B} (a' ++' b') j
+               => map'_++ {A} {B} f {n} {m} {a} {a'} {b} {b'} (ext $ ext p1) (ext $ ext p2)
+}
