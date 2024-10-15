@@ -38,14 +38,15 @@
     -- TODO with the beta function this can be reduced to one exists
     -- there exist solutions to the array of functions, such that they are correct and the combining function is correct
     -- ∃ r_1, ..., r_m . (f / m0 r_1 ... r_m) ∧ (fs_1 / r_1 args_1 ... args_n) ∧ ... ∧ (fs_m / r_m args_1 ... args_n)
-    \func representCompose {n : Nat} (m : Nat) (f : Formula (suc m)) (fs : Array (Formula (suc n)) m) : Formula (suc n)
-      => \let
-         -- context of f: m0 args'_1 ... args'_m
-         -- context of f': m0 args_1 ... args_m r_1 ... r_m
-         -- so map m0 to m0, and shift the rest so that r_1 ... r_m are the args
+
+    \func representCompose {n : Nat} (m : Nat) (f : Formula (suc m)) (fs : Array (Formula (suc n)) m) : Formula (suc n) =>
+      \let
+        -- context of f: m0 args'_1 ... args'_m
+        -- context of f': m0 args_1 ... args_m r_1 ... r_m
+        -- so map m0 to m0, and shift the rest so that r_1 ... r_m are the args
         | f' : Formula (suc (m Nat.+ n)) => Substitution.substitute f (\lam v => \case \elim v \with {
           | 0 => #0
-          | suc v => {?r_v} -- r_v
+          | suc v => liftTerm {_} {suc m} {?r_v} -- r_v
         })
         -- context of fs i: r_i args'_1 ... args'_m
         -- context of fs': m0 args_1 ... args_m r_1 ... r_m
@@ -54,7 +55,7 @@
             | 0 => {?r_i} -- r_i
             | suc v => {?args} -- args_v
           })
-         \in cExists' m $ cAnd f' (cAndH' fs')
+      \in cExists' m $ cAnd f' (cAndH' fs')
 
     \func representCompose= {n m : Nat} {f : PrimRec m} {fs : Array (PrimRec n) m}
       : representPrimRec (ComposeFun m f fs) = representCompose m (representPrimRec f) (\lam i => representPrimRec (fs i))
@@ -78,24 +79,24 @@
         \in goal
       | n, ComposeFun m f fs, args =>
         \let
-          | h1 => h NNInterpretation modelsNN
-          | h2 => unfold_let in (unfold representCompose in transport (\lam z => NNInterpretation ⊧ Substitution.substitute z (natTerm result :: \new Array (Term 0) n (\lam v => natTerm (args v)))) representCompose= h1)
-          | h3 => rewrite SubstituteExtensions.subsituteCExists' h2
-          | h4 => InterprreteExtensions.modelsCExists' h3
-          | h5 : ∃ (a : Array Nat m) (\Sigma ) => \case h4 \with {
-            | inP (a, (f'M, fs'M)) => \let
-              | foo => ⊧.fromSub.substitutionLemma-> (extend' NNInterpretation a)
-                  {extend' NNInterpretation {?}}
-                  (\lam (v : variable (suc (m Nat.+ n))) => \case \elim v \with {
-                    | 0 => {?}
-                    | suc f1 => {?}
-                  })
-                  f'M
-            \in {?}
-          }
-          | hL : evalPrimRec f (\new Array Nat m (\lam i => evalPrimRec (fs i) args)) = result => {?}
-          | goal : evalPrimRec (ComposeFun m f fs) args = result => rewrite (evalPrimRec.evalCompose {n} {m}) hL
-        \in goal
+          | h' =>
+            rewrite SubstituteExtensions.subsituteCExists' in
+            unfold representCompose in
+            transport (\lam z => NN ⊧I (Substitution.substitute z _)) representCompose= h
+          | realInModel => InterprreteExtensions.modelsCExists' $ h' NNInterpretation modelsNN
+        \in hiding h \case \elim realInModel \with {
+          | inP (args', (f'M, fs'M)) =>
+            \let
+              | f'M2 => rewrite Substitution.substitute.compose in f'M
+
+              | f'c => correct {m} {result} {f} {args'} (\lam I ImodelsNN =>
+                  \let
+                    | foo => {?}
+                  \in {?}
+              )
+              | fs'c => \lam (i : Fin m) => correct {n} {args' i} {fs i} {args} {?}
+            \in evalPrimRec.evalCompose *> pmap (evalPrimRec f) (ext $ ext fs'c) *> f'c
+        }
 
     \func complete {n : Nat} {p : PrimRec n} {args : Array Nat n}
       : NN Interpretation.⊧I Substitution.substitute (representPrimRec p) (natTerm (evalPrimRec p args) :: (\lam v => natTerm $ args v))

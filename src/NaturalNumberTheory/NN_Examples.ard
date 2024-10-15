@@ -1,0 +1,18 @@
+\import NaturalNumberTheory.NN
+\import NaturalNumberTheory.NNModel
+\import semantics.Interpretation
+\import syntax.Syntax
+
+
+\module NN_Examples \where {
+  \open LNN_Syntax
+
+  \lemma one+one=2 : NN Interpretation.⊧I equal (Plus One One) Two
+    => {?}
+
+  \lemma one+one=2-model : NNInterpretation Interpretation.⊧ equal (Plus One One) Two
+    => idp
+
+  \lemma one+one=2-model' : NNInterpretation Interpretation.⊧ equal (Plus One One) Two
+    => Interpretation.impliesFromAxioms (equal (Plus One One) Two) modelsNN one+one=2
+}

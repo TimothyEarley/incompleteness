@@ -119,19 +119,19 @@
                       | suc v => hI' v *> inv extendRenameOne
                     })
                     h
-                                    )
+                )
               }
 
             \private \func extendRenameOne {_ : Language} {c : Context} {I : Interpretation c} {u : I.structure.Universe}
-                                  {t : Term c}
+                                           {t : Term c}
               : evaluate (extend I u) (Rename.renameTerm t fsuc) = evaluate I t
             \elim t
               | var v => idp
               | apply f1 args => pmap (fun f1) (ext $ ext $ (\lam j => extendRenameOne {_} {_} {_} {_} {args j}))
 
             \private \func evaluateSubstituteTerm {_ : Language} {c c' : Context} {x : Term c}
-                                         (I : Interpretation c') {I' : Interpretation c I.structure} {s : variable c -> Term c'}
-                                         (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v))
+                                                  (I : Interpretation c') {I' : Interpretation c I.structure} {s : variable c -> Term c'}
+                                                  (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v))
               : evaluate I (substituteTerm x s) = evaluate I' x
             \elim x
               | var v => inv (hI' v)
@@ -139,7 +139,7 @@
           }
       }
 
-    \func modelsAll \alias \infix 6 ⊧A {_ : Language} {c : Context} (interp : Interpretation c) (Phi : Theory c) : \Prop =>
+    \func modelsAllAxioms \alias \infix 6 ⊧A {_ : Language} {c : Context} (interp : Interpretation c) (Phi : Theory c) : \Prop =>
       \Pi {phi : Formula c} (phi ∈ Phi) -> interp ⊧ phi
       \where {
         \func fromAdd {_ : Language} {c : Context} {I : Interpretation c} {Phi : Theory c} {phi : Formula c}
@@ -154,6 +154,11 @@
 
     \func implies \alias \infix 6 ⊧I {_ : Language} {c : Context} (Phi : Theory c) (phi : Formula c) =>
       \Pi (I : Interpretation c) (I ⊧A Phi) -> I ⊧ phi
+
+    \func impliesFromAxioms {_ : Language} {c : Context} {Phi : Theory c} (phi : Formula c)
+                            {I : Interpretation c}
+                            (hA : I ⊧A Phi) (hi : Phi ⊧I phi) : I ⊧ phi =>
+      {?} -- TODO use proof calc
   }
 
 \module InterprreteExtensions \where {
@@ -165,8 +170,8 @@
   \elim m
     | 0 => \let h' => rewrite (\peval cExists' 0 f) in h \in inP (nil, h')
     | suc m => \case rewrite (\peval cExists' (suc m) f) h \with {
-        | inP (u, h') => \case modelsCExists' h' \with {
-          | inP (a, h'') => inP (u :: a, h'')
-        }
+      | inP (u, h') => \case modelsCExists' h' \with {
+        | inP (a, h'') => inP (u :: a, h'')
+      }
     }
 }

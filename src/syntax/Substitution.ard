@@ -67,6 +67,14 @@
     \elim t
       | var v => s v
       | apply f args => apply f $ \lam i => substituteTerm (args i) s
+    \where {
+      \func compose {_ : Language} {c c' c'' : Context} {t : Term c}
+                    {s : Substitution c c'} {s' : Substitution c' c''}
+        : substituteTerm (substituteTerm t s) s' = substituteTerm t (\lam v => substituteTerm (s v) s')
+        \elim t
+          | var v => idp
+          | apply f args => pmap (apply f) (ext $ ext (\lam j => compose {_} {_} {_} {_} {args j}))
+    }
 
     \func substitute {_ : Language} {c c' : Context} (f : Formula c) (s : Substitution c c') : Formula c'
     \elim f
@@ -83,6 +91,19 @@
         | 0 => var zero
         | suc i => renameTerm (s i) fsuc
       }) -- TODO extract funtion
+    \where {
+      \func compose {_ : Language} {c c' c'' : Context} {f : Formula c}
+                    {s : Substitution c c'} {s' : Substitution c' c''}
+        : substitute (substitute f s) s' = substitute f (\lam v => substituteTerm (s v) s')
+      \elim f
+        | equal a b => pmap2 equal substituteTerm.compose substituteTerm.compose
+        | atomic r terms => {?}
+        | notH f => {?}
+        | impH a f => {?}
+        | cAnd a f => {?}
+        | forAllH f => {?}
+        | cExists f => {?}
+    }
 
     \func subst {_ : Language} {c : Context} (f : Formula (inc c)) (t : Term c) : Formula c =>
       substitute f (substOne t)
