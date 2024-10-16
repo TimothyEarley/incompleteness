@@ -1,11 +1,10 @@
+\import Consistent
 \import Logic
 \import Representation
+\import proof.PrfCompleteness
 \import proof.Proof
 \import syntax.Context
 \import syntax.Syntax
-
-\func Consistent {_ : Language} (T : Theory Context.empty) : \Prop
-  => Not (\Pi (f : Sentence) -> Prf T f)
 
 \func Incompleteness
   {_ : Language}

@@ -3,6 +3,7 @@
 \import Logic
 \import Paths
 \import Paths.Meta
+\import Set
 
 \func convertArrayEquality {A : \Type} {l : Nat} {a b : Array A l} (p : a = {Array A} b) : a = {Array A l} b
 \elim l, a, b, p
@@ -38,3 +39,7 @@
                {j : Fin (n Nat.+ m)} : f ((a ++' b) j) = {B} (a' ++' b') j
                => map'_++ {A} {B} f {n} {m} {a} {a'} {b} {b'} (ext $ ext p1) (ext $ ext p2)
 }
+
+
+\func NoDupes {A : \Type} (a : Array A) : \Prop
+  => \Pi {i i' : Fin a.len} (a i = a i') -> i = i'

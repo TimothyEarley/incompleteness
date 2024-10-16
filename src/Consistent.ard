@@ -1,0 +1,39 @@
+\import Logic
+\import Logic.Meta
+\import Set.Fin
+\import Set.Subset (⊆)
+\import proof.Proof
+\import syntax.Context
+\import syntax.Syntax
+\import util.SetUtil
+\open FormulaExtensions (trueH)
+
+\func Consistent {_ : Language} {c : Context} (T : Theory c) : \Prop => Not (Inconsistent T)
+
+  \where {
+    \func Inconsistent {_ : Language} {c : Context} (T : Theory c) : \Prop =>
+      ∃ (f : Formula c) (Prf T f) (Prf T (notH f))
+
+    \sfunc inconsistent->everything {_ : Language} {c : Context} {T : Theory c}
+                                    (h : Inconsistent T) (f' : Formula c) : TruncP (Prf T f')
+    \elim h
+      | inP (f, prf1, prf2) => inP (contra f prf2 prf1)
+
+    \func everything->inconsistent {_ : Language} {c : Context} {T : Theory c}
+                                   (h : \Pi (f : Formula c) -> Prf T f) : Inconsistent T =>
+      inP (trueH, h trueH, h (notH trueH))
+
+    \func compactness-> {_ : Language} {c : Context} {T : Theory c}
+                        (h : \Pi (T' : Theory c) (FinSet (Elements T')) (T' ⊆ T) -> Consistent T') : Consistent T
+      => \lam iT => \case iT \with {
+        | inP (f, prfF, prfNotF) => \let foo => h {?} \in {?}
+      }
+
+    -- fin not even needed here
+    \func compactness<- {_ : Language} {c : Context} {T : Theory c}
+                        (h : Consistent T)
+      : \Pi (T' : Theory c) (FinSet (Elements T')) (T' ⊆ T) -> Consistent T' => \lam _ _ T'subT iT' =>
+        \case iT' \with {
+          | inP (f, prfF, prfNotF) => h (inP (f, Prf.weaken prfF T'subT, Prf.weaken prfNotF T'subT))
+        }
+  }

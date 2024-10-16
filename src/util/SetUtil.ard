@@ -1,17 +1,108 @@
 \import Data.Array
+\import Data.Or
+\import Equiv
+\import Function.Meta
 \import Logic
+\import Logic.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Set
+\import Set.Fin
 \import Set.Subset
+\import util.ArrayUtil
 
-\func element \alias \infix 6 ∈ {X : \Set} (x : X) (S : Set X) : \Prop
-  => S x
+\func element \alias \infix 6 ∈ {X : \Set} (x : X) (S : Set X) : \Prop => S x
 
-\func add {X : \Set} (S : Set X) (x : X) : Set X
-  => \lam y => y ∈ S || (y = x)
+\func Elements {X : \Set} (S : Set X) : \Set => \Sigma (x : X) (x ∈ S)
+
+\func add {X : \Set} (S : Set X) (x : X) : Set X => \lam y => y ∈ S || (y = x)
+
+\func union \alias \infix 6 ∪ {X : \Set} (S S' : Set X) : Set X => \lam y => y ∈ S || y ∈ S'
 
 \func setOfArray {X : \Set} (a : Array X) : Set X => \lam x => TruncP (Index x a)
 
-\func subsetAdd {X : \Set} {x : X} {S S' : Set X} (h : S ⊆ S') : add S x ⊆ add S' x
-  => \case \elim __ \with {
-    | byLeft a => byLeft (h a)
-    | byRight b => byRight b
+\func unionOfArray {X : \Set} {a a' : Array X} : setOfArray a ∪ setOfArray a' = setOfArray (a ++ a') =>
+  ext (\lam x => ext (
+    \case __ \with {
+      | byLeft (inP i) => inP $ index-left i
+      | byRight (inP i) => inP $ index-right i
+    },
+    \lam (inP (i, h)) => \case \elim x, \elim i, \elim h, ++.split-index i \with {
+      | _, _, idp, inl (i', idp) => byLeft (inP (i', inv $ ++.++_index-left _))
+      | _, _, idp, inr (i', idp) => byRight (inP (i', inv ++.++_index-right))
+    }
+  ))
+
+\func setOfArrayNub {X : DecSet} {a : Array X} : Elements (setOfArray a) = Elements (setOfArray (nub a)) =>
+  pmap Elements $ ext (\lam x => ext
+      (\case \elim x, __ \with {
+        | _, inP (i, idp) => inP (nub-isSurj a i)
+      },
+       \case \elim x, __ \with {
+         | _, inP (i, idp) => \let (i', h') => (nub-preimage i) \in inP (i', inv h')
+       })
+  )
+
+\func subsetAdd {X : \Set} {x : X} {S S' : Set X} (h : S ⊆ S') : add S x ⊆ add S' x => \case \elim __ \with {
+  | byLeft a => byLeft (h a)
+  | byRight b => byRight b
+}
+
+\func subsetSingle {X : \Set} {S : Set X} {x : X} (h : x ∈ S) : single x ⊆ S => transport S __ h
+
+\module FinSets \where {
+  \func FinSingle {X : \Set} {x : X} : FinSet (Elements (single x)) \cowith
+    | finCard => 1
+    | finEq => inP \new QEquiv {
+      | f _ => (x, idp)
+      | ret _ => 0
+      | ret_f => \case \elim __ \with {
+        | 0 => idp
+      }
+      | f_sec (x', p') => ext p'
+    }
+
+  \func FinArrayNoDupes {X : \Set} {a : Array X} (h : NoDupes a) : FinSet (Elements (setOfArray a)) \cowith
+    | finCard => a.len
+    | finEq => inP \new QEquiv {
+      | f i => (a i, inP (i, idp))
+      | ret (_, e) => extractFin h e
+      | ret_f i => \peval extractFin h (inP (i,idp))
+      | f_sec e => \case \elim e \with {
+        | (_, inP (i, idp)) => ext $
+        transportInv (a __ = a i) (\peval extractFin h (inP (i,idp))) idp
+      }
+    }
+    \where {
+      \sfunc extractFin {X : \Set} {a : Array X} {x : X} (nd : NoDupes a) (h : x ∈ setOfArray a) : Fin a.len
+      \elim h
+        | inP (i, _) => i
+        | truncP (inP (i1, p1)) (inP (i2, p2)) i => nd (p1 *> inv p2) @ i
+    }
+
+  \func FinArray {X : DecSet} {a : Array X} : FinSet (Elements (setOfArray a)) =>
+    rewriteI setOfArrayNub in FinArrayNoDupes {X} {nub a} nub-isInj
+
+  \func finToArray {X : DecSet} {S : Set X} (h : FinSet (Elements S)) : ∃ (a : Array X h.finCard) (S = setOfArray a) =>
+    \case h.finSurj \with {
+      | inP (f, fSurj) => inP
+          (\lam i => (f i).1,
+           ext (\lam x => ext (
+             \lam xElS => \let foo => fSurj (x, xElS) \in TruncP.map foo (\lam (x', h') => (x', pmap __.1 h')),
+             \case \elim x, __ \with {
+               | _, inP (j, idp) => (f j).2
+             }
+           ))
+          )
+    }
+
+  \func FinUnion {X : DecSet} {S S' : Set X} (h : FinSet (Elements S)) (h' : FinSet (Elements S'))
+    : FinSet (Elements (S ∪ S')) => \case finToArray h, finToArray h' \with {
+    | inP (arr1, p1), inP (arr2, p2) => run {
+      rewrite (p1, p2),
+      transportInv (\lam X => FinSet (Elements X)) unionOfArray,
+      FinArray
+    }
   }
+}
