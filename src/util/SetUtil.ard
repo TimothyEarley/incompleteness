@@ -14,11 +14,19 @@
 
 \func element \alias \infix 6 ∈ {X : \Set} (x : X) (S : Set X) : \Prop => S x
 
+\func not-element \alias \infix 6 ∉ {X : \Set} (x : X) (S : Set X) : \Prop => Not (S x)
+
 \func Elements {X : \Set} (S : Set X) : \Set => \Sigma (x : X) (x ∈ S)
 
-\func add {X : \Set} (S : Set X) (x : X) : Set X => \lam y => y ∈ S || (y = x)
+\func emptySet \alias ∅ {X : \Set} : Set X => \lam _ => Empty
 
 \func union \alias \infix 6 ∪ {X : \Set} (S S' : Set X) : Set X => \lam y => y ∈ S || y ∈ S'
+
+\func without \alias \infix 6 ∖ {X : \Set} (S S' : Set X) : Set X => \lam y => \Sigma (y ∈ S) (y ∉ S')
+
+\func add {X : \Set} (S : Set X) (x : X) : Set X => S ∪ (single x)
+
+\func delete {X : \Set} (S : Set X) (x : X) : Set X => S ∖ (single x)
 
 \func setOfArray {X : \Set} (a : Array X) : Set X => \lam x => TruncP (Index x a)
 
@@ -34,22 +42,53 @@
     }
   ))
 
+\func withoutOfArray' {X : \Set} {a : Array X} {S : Set X} (dec : \Pi (x : X) -> Dec (x ∈ S)) : setOfArray a ∖ S = setOfArray (remove dec a) =>
+  ext (\lam x => ext (
+    \lam h => \case \elim x, \elim h \with {
+      | _, (inP (i, idp), h) => inP $ remove.element h
+    },
+    \lam h => \case \elim x, \elim h \with {
+      | _, inP (i, idp) => (inP $ \let (i', h') => remove.preimage i \in (i', inv h'), remove.no-element dec)
+    }
+  ))
+
 \func setOfArrayNub {X : DecSet} {a : Array X} : Elements (setOfArray a) = Elements (setOfArray (nub a)) =>
   pmap Elements $ ext (\lam x => ext
       (\case \elim x, __ \with {
         | _, inP (i, idp) => inP (nub-isSurj a i)
       },
        \case \elim x, __ \with {
-         | _, inP (i, idp) => \let (i', h') => (nub-preimage i) \in inP (i', inv h')
+         | _, inP (i, idp) => \let (i', h') => nub-preimage i \in inP (i', inv h')
        })
   )
 
-\func subsetAdd {X : \Set} {x : X} {S S' : Set X} (h : S ⊆ S') : add S x ⊆ add S' x => \case \elim __ \with {
-  | byLeft a => byLeft (h a)
-  | byRight b => byRight b
-}
+\module SubsetHelper \where {
+  \func subsetAdd {X : \Set} {x : X} {S S' : Set X} (h : S ⊆ S') : add S x ⊆ add S' x => \case \elim __ \with {
+    | byLeft a => byLeft (h a)
+    | byRight b => byRight b
+  }
 
-\func subsetSingle {X : \Set} {S : Set X} {x : X} (h : x ∈ S) : single x ⊆ S => transport S __ h
+  \func subsetSingle {X : \Set} {S : Set X} {x : X} (h : x ∈ S) : single x ⊆ S => transport S __ h
+
+  \func subsetUnion {X : \Set} {S S' S'' : Set X} (h : S ⊆ S'') (h' : S' ⊆ S'') : S ∪ S' ⊆ S'' => \case __ \with {
+    | byLeft a => h a
+    | byRight b => h' b
+  }
+
+  \func subsetDelete {X : \Set} {S S' : Set X} {x : X} (h : S ⊆ add S' x) : delete S x ⊆ S' =>
+    \lam d => \case h d.1 \with {
+      | byLeft a => a
+      | byRight b => absurd $ d.2 b
+    }
+
+   \func addDelete {X : DecSet} {S : Set X} {x : X} : S ⊆ add (delete S x) x
+     => \lam {y} e => \case decideEq x y \with {
+       | yes p => byRight p
+       | no n => byLeft (e, n)
+     }
+
+    \func emptySubset {X : \Set} {S : Set X} : ∅ ⊆ S => \lam e => absurd e
+}
 
 \module FinSets \where {
   \func FinSingle {X : \Set} {x : X} : FinSet (Elements (single x)) \cowith
@@ -105,4 +144,22 @@
       FinArray
     }
   }
+
+  \func FinWithout {X : DecSet} {S S' : Set X} (h : FinSet (Elements S)) (d : \Pi (x : X) -> Dec (x ∈ S')) : FinSet (Elements (S ∖ S'))
+    => \case finToArray h \with {
+      | inP (a, p) => run {
+        rewrite p,
+        transportInv (\lam z => FinSet (Elements z)) (withoutOfArray' d),
+        FinArray
+      }
+    }
+
+  \func FinEmpty {X : \Set} : FinSet (Elements {X} ∅)
+    => \let p : Elements ∅ = Empty => ext \new QEquiv {
+      | f e => usingOnly e.2 contradiction
+      | ret => contradiction
+      | ret_f e => usingOnly e.2 contradiction
+      | f_sec => contradiction
+    }
+       \in rewriteI p in EmptyFin
 }

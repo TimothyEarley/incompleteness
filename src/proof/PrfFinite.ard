@@ -1,0 +1,77 @@
+\import Logic
+\import Paths
+\import Set
+\import Set.Fin
+\import Set.Subset
+\import decidable.DecLanguage
+\import decidable.FormulaCode
+\import proof.Proof
+\import syntax.Context
+\import syntax.Substitution
+\import syntax.Syntax
+\import util.SetUtil
+
+\func prfFinite {_ : DecLanguage} {c : Context} {axioms : Theory c} {toShow : Formula c}
+                (prf : Prf axioms toShow) : \Sigma (axioms' : Theory c) (axioms' ⊆ axioms) (FinSet (Elements axioms')) (Prf axioms' toShow)
+\elim toShow, prf
+  | toShow, AXM e => (single toShow, SubsetHelper.subsetSingle e, FinSets.FinSingle, AXM idp)
+  | toShow, contra f prf1 prf2 =>
+    \let
+      | h1 => prfFinite prf1
+      | h2 => prfFinite prf2
+    \in (
+      h1.1 ∪ h2.1,
+      SubsetHelper.subsetUnion h1.2 h2.2,
+      FinSets.FinUnion h1.3 h2.3,
+      contra f (Prf.weaken h1.4 (\lam h => byLeft h)) (Prf.weaken h2.4 (\lam h => byRight h))
+    )
+  | toShow, forAllElim f e t prf =>
+    \let
+      | h => prfFinite prf
+      -- h.1 could have (subst f t) in it. Thats needs to be removed
+    \in (
+      add (delete h.1 (Substitution.subst f t)) (forAllH f),
+      SubsetHelper.subsetUnion (SubsetHelper.subsetDelete h.2) (\lam p => transport axioms p e),
+      FinSets.FinUnion (FinSets.FinWithout h.3 (decideEq _)) FinSets.FinSingle,
+      forAllElim f (byRight idp) t (Prf.weaken h.4 (\lam {f'} hf' => \case decideEq (Substitution.subst f t) f' \with {
+        | yes d => byRight d
+        | no d => byLeft (byLeft (hf', d))
+      }))
+    )
+  | impH a b, introImp prf =>
+    \let
+      | h => prfFinite prf
+      -- we could have used a, so remove it
+    \in (
+      delete h.1 a,
+      SubsetHelper.subsetDelete h.2,
+      FinSets.FinWithout h.3 (decideEq _),
+      introImp (Prf.weaken h.4 SubsetHelper.addDelete)
+    )
+  | equal a b, refl p => (∅, SubsetHelper.emptySubset, FinSets.FinEmpty, refl p)
+  | notH (impH (notH a) b), notImp prf1 prf2 =>
+    \let
+      | h1 => prfFinite prf1
+      | h2 => prfFinite prf2
+    \in (
+      h1.1 ∪ h2.1,
+      SubsetHelper.subsetUnion h1.2 h2.2,
+      FinSets.FinUnion h1.3 h2.3,
+      notImp (Prf.weaken h1.4 (byLeft __)) (Prf.weaken h2.4 (byRight __))
+    )
+  | notH toShow, notFalse p => (∅, SubsetHelper.emptySubset, FinSets.FinEmpty, notFalse p)
+  | notH (equal a b), notEqual h => (∅, SubsetHelper.emptySubset, FinSets.FinEmpty, notEqual h)
+  | notH (equal a b), notEqualSymm prf =>
+    \let
+    | h => prfFinite prf
+    \in (h.1, h.2, h.3, notEqualSymm h.4)
+  | notH toShow, notHFromimpH f' prf1 prf2 =>
+    \let
+      | h1 => prfFinite prf1
+      | h2 => prfFinite prf2
+    \in (
+      h1.1 ∪ h2.1,
+      SubsetHelper.subsetUnion h1.2 h2.2,
+      FinSets.FinUnion h1.3 h2.3,
+      notHFromimpH f' (Prf.weaken h1.4 (byLeft __)) (Prf.weaken h2.4 (byRight __))
+    )

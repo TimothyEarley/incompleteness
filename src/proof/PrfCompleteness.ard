@@ -3,13 +3,6 @@
 \import syntax.Context
 \import syntax.Syntax
 
-\open Interpretation
-
 \func prfComplete {_ : Language} {c : Context} {axioms : Theory c} {toSHow : Formula c}
                   (h : axioms Interpretation.⊧I toSHow) : Prf axioms toSHow
   => {?}
-\where {
-
-
-
-}

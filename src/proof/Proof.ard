@@ -3,7 +3,6 @@
 \import Logic
 \import Paths
 \import Paths.Meta
-\import Set.Fin
 \import Set.Subset
 \import semantics.Interpretation
 \import syntax.Context
@@ -43,12 +42,12 @@
     \elim f, prf
       | f, AXM e => AXM (sub e)
       | _, contra f' prf1 prf2 => contra f' (weaken prf1 sub) (weaken prf2 sub)
-      | impH f f1, introImp prf => introImp (weaken prf $ subsetAdd sub)
+      | impH f f1, introImp prf => introImp (weaken prf $ SubsetHelper.subsetAdd sub)
       | equal a b, refl p => refl p
       | notH (impH (notH f) g), notImp h1 h2 => notImp (weaken h1 sub) (weaken h2 sub)
       | notH _, notFalse idp => notFalse idp
       | notH (equal a b), notEqual h => notEqual h
-      | f, forAllElim fa e t prf => forAllElim fa (sub e) t (weaken prf (subsetAdd sub))
+      | f, forAllElim fa e t prf => forAllElim fa (sub e) t (weaken prf (SubsetHelper.subsetAdd sub))
       | notH (equal a b), notEqualSymm prf => notEqualSymm (weaken prf sub)
       | notH f, notHFromimpH f' prf prf1 => notHFromimpH f' (weaken prf sub) (weaken prf1 sub)
   }
@@ -108,21 +107,3 @@
   | notH f, notHFromimpH f' prf prf1 => \lam I mAxioms mF => prfCorrectness prf I mAxioms (prfCorrectness prf1 I mAxioms mF)
 
   \where \open Interpretation
-
-\func prfFinite {_ : Language} {c : Context} {axioms : Theory c} {toShow : Formula c}
-                (prf : Prf axioms toShow) : \Sigma (axioms' : Theory c) (axioms' ⊆ axioms) (FinSet (Elements axioms')) (Prf axioms' toShow)
-\elim toShow, prf
-  | toShow, AXM e => (single toShow, subsetSingle e, FinSets.FinSingle, AXM idp)
-  | toShow, contra f prf1 prf2 =>
-    \let
-      | h1 => prfFinite prf1
-      | h2 => prfFinite prf2
-    \in (union {?}, {?}, {?}, {?})
-  | toShow, forAllElim f e t prf => {?}
-  | impH toShow toShow1, introImp prf => {?}
-  | equal a b, refl p => {?}
-  | notH (impH (notH toShow) toShow1), notImp prf1 prf2 => {?}
-  | notH toShow, notFalse p => {?}
-  | notH (equal a b), notEqual _x => {?}
-  | notH (equal a b), notEqualSymm prf => {?}
-  | notH toShow, notHFromimpH f' prf prf1 => {?}

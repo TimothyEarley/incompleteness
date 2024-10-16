@@ -2,6 +2,9 @@
 \import Logic.Meta
 \import Set.Fin
 \import Set.Subset (⊆)
+\import decidable.DecLanguage
+\import decidable.FormulaCode
+\import proof.PrfFinite
 \import proof.Proof
 \import syntax.Context
 \import syntax.Syntax
@@ -23,10 +26,18 @@
                                    (h : \Pi (f : Formula c) -> Prf T f) : Inconsistent T =>
       inP (trueH, h trueH, h (notH trueH))
 
-    \func compactness-> {_ : Language} {c : Context} {T : Theory c}
+    \func compactness-> {_ : DecLanguage} {c : Context} {T : Theory c}
                         (h : \Pi (T' : Theory c) (FinSet (Elements T')) (T' ⊆ T) -> Consistent T') : Consistent T
       => \lam iT => \case iT \with {
-        | inP (f, prfF, prfNotF) => \let foo => h {?} \in {?}
+        | inP (f, prfF, prfNotF) =>
+          \let
+           | prfF' => prfFinite prfF
+           | prfNotF' => prfFinite prfNotF
+          \in h
+              (prfF'.1 ∪ prfNotF'.1)
+              (FinSets.FinUnion prfF'.3 prfNotF'.3)
+              (SubsetHelper.subsetUnion prfF'.2 prfNotF'.2)
+              (inP (f, Prf.weaken prfF'.4 (byLeft __), Prf.weaken prfNotF'.4 (byRight __)))
       }
 
     -- fin not even needed here
