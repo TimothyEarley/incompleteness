@@ -50,10 +50,20 @@
   | equal a b, symm prf => \lam I mAxioms => inv $ prfCorrectness prf I mAxioms
   | equal a b, trans prf1 prf2 => \lam I mAxioms => prfCorrectness prf1 I mAxioms *> prfCorrectness prf2 I mAxioms
   | equal a_ _, fcong {f} {args} {args'} prfs idp idp =>
-    \let | prfs' => prfCorrectnessArray (\lam i => equal (args i) (args' i)) prfs
+    \let prfs' => prfCorrectnessArray (\lam i => equal (args i) (args' i)) prfs
     \in \lam I m => pmap (fun f) (ext (ext (\lam j => prfs' j I m)))
+  | atomic r args, rcong {args'} prfs prf => \lam (I : Interpretation) m =>
+      \let
+        | prf' => prfCorrectness prf I m
+        | prfs' => prfCorrectnessArray (\lam i => equal (args i) (args' i)) prfs
+        | h :
+          (\new Array (Universe {I.structure}) (relArity r) (\lam i => evaluate I (args i))) =
+          (\new Array (Universe {I.structure}) (relArity r) (\lam i => evaluate I (args' i)))
+        => ext (ext (\lam j => prfs' j I m))
+      \in rewrite h prf'
   \where {
     -- to work around termintation checking
+
     \func prfCorrectnessArray {_ : Language} {c : Context} {axioms : Theory c} (toShow : Array (Formula c))
                               (prfs : DArray (\lam i => Prf axioms (toShow i)))
       : DArray (\lam i => axioms ⊧I toShow i)

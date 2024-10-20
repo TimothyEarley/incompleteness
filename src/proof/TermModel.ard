@@ -18,9 +18,9 @@
                   (\Pi (i : Fin (L.funArity f)) -> args i ~ args' i)
   -> apply f args ~ apply f args'
   | congRel : \Pi (r : L.Relations) (args args' : Array (Term c) (L.relArity r))
-                  (\Pi (i : Fin (L.relArity r)) -> args i ~ args' i)
+                  (\Pi (i : Fin (L.relArity r)) -> args' i ~ args i)
                   (Prf T (atomic r args))
-  -> Prf T (atomic r args')
+  -> Prf' T (atomic r args')
 
 \func ProvableEqualCongruence  {_ : Language} {c : Context} (T : Theory c) : TermCongruence \cowith
   | L => _
@@ -36,10 +36,12 @@
     | inP a, inP a1 => inP (trans a a1)
   }
   | ~-reflexive => inP (refl idp)
-  | congFun f args args' h => \case truncPArray {funArity f} h \with {
+  | congFun f _ _ h => \case truncPArray {funArity f} h \with {
     | inP h' => inP (fcong h' idp idp)
   }
-  | congRel => {?}
+  | congRel r a a' h prf => \case truncPArray {relArity r} h \with {
+    | inP h' => inP (rcong h' prf)
+  }
 
 \func TermInterpretation {_ : Language} {c : Context} (T : Theory c) : Interpretation c \cowith
   | structure => \new Structure {

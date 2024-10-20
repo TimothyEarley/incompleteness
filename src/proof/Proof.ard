@@ -20,7 +20,7 @@
     | sub
       (f : Formula (Context.inc c))
       (t t' : Term c)
-      (Prf axioms(Substitution.subst f t)) (Prf axioms (equal t t'))
+      (Prf axioms (Substitution.subst f t)) (Prf axioms (equal t t'))
       (p : toShow = Substitution.subst f t')
   }
   | impH a b => introImp (Prf (add axioms a) b)
@@ -28,7 +28,7 @@
   | equal a b => {
     | refl (a = b)
 
-    -- TODO too lazy to prove stuff with sub atm, so use special cases
+  -- TODO too lazy to prove stuff with sub atm, so use special cases
     | symm (Prf axioms (equal b a))
     | trans {t : Term c} (Prf axioms (equal a t)) (Prf axioms (equal t b))
     | fcong {f : Functions} {args args' : Array (Term c) (funArity f)}
@@ -46,5 +46,8 @@
   | notH (equal a b) => notEqual (\Pi (I : Interpretation c) -> Not (Interpretation.evaluate I a = Interpretation.evaluate I b))
   | notH (equal a b) => notEqualSymm (Prf axioms (notH (equal b a)))
   | notH f => notHFromimpH (f' : Formula c) (h : Prf axioms (notH f')) (h' : Prf axioms (impH f f'))
+  | atomic r args => rcong {args' : Array (Term c) (relArity r)}
+                           (prfs : DArray {relArity r} (\lam i => Prf axioms (equal (args i) (args' i))))
+                           (prf : Prf axioms (atomic r args'))
 
 \func Prf' {_ : Language} {c : Context} (axioms : Theory c) (toShow : Formula c) : \Prop => TruncP (Prf axioms toShow)

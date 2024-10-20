@@ -1,3 +1,4 @@
+\import Function.Meta
 \import Logic
 \import Paths
 \import Set
@@ -109,4 +110,17 @@
       SubsetHelper.subsetFiniteUnion {_} {S} (\lam i => (prfs' i).2),
       FinSets.FinFiniteUnion S (\lam i => (prfs' i).3),
       fcong (\lam i => prfWeaken (prfs' i).4 (SubsetHelper.subsetFiniteUnion' {_} {S} (i, idp))) idp idp
+    )
+  | atomic r terms, rcong prfs prf =>
+    \let
+      | prf' => prfFinite prf
+      | prfs' => \lam i => prfFinite (prfs i)
+      | S => \lam i => (prfs' i).1
+    \in (
+      finiteUnion S ∪ prf'.1,
+      SubsetHelper.subsetUnion (SubsetHelper.subsetFiniteUnion {_} {S} (\lam i => (prfs' i).2)) prf'.2 ,
+      FinSets.FinUnion (FinSets.FinFiniteUnion S (\lam i => (prfs' i).3)) prf'.3,
+      rcong
+          (\lam i => prfWeaken (prfs' i).4 (\lam h => byLeft $ SubsetHelper.subsetFiniteUnion' {_} {S} (i, idp) h))
+          (prfWeaken prf'.4 (byRight __))
     )
