@@ -5,6 +5,7 @@
 \import Set.Subset
 \import decidable.DecLanguage
 \import decidable.FormulaCode
+\import proof.PrfWeaken
 \import proof.Proof
 \import syntax.Context
 \import syntax.Substitution
@@ -23,7 +24,7 @@
       h1.1 ∪ h2.1,
       SubsetHelper.subsetUnion h1.2 h2.2,
       FinSets.FinUnion h1.3 h2.3,
-      contra f (Prf.weaken h1.4 (\lam h => byLeft h)) (Prf.weaken h2.4 (\lam h => byRight h))
+      contra f (prfWeaken h1.4 (\lam h => byLeft h)) (prfWeaken h2.4 (\lam h => byRight h))
     )
   | toShow, forAllElim f e t prf =>
     \let
@@ -33,7 +34,7 @@
       add (delete h.1 (Substitution.subst f t)) (forAllH f),
       SubsetHelper.subsetUnion (SubsetHelper.subsetDelete h.2) (\lam p => transport axioms p e),
       FinSets.FinUnion (FinSets.FinWithout h.3 (decideEq _)) FinSets.FinSingle,
-      forAllElim f (byRight idp) t (Prf.weaken h.4 (\lam {f'} hf' => \case decideEq (Substitution.subst f t) f' \with {
+      forAllElim f (byRight idp) t (prfWeaken h.4 (\lam {f'} hf' => \case decideEq (Substitution.subst f t) f' \with {
         | yes d => byRight d
         | no d => byLeft (byLeft (hf', d))
       }))
@@ -46,7 +47,7 @@
       delete h.1 a,
       SubsetHelper.subsetDelete h.2,
       FinSets.FinWithout h.3 (decideEq _),
-      introImp (Prf.weaken h.4 SubsetHelper.addDelete)
+      introImp (prfWeaken h.4 SubsetHelper.addDelete)
     )
   | equal a b, refl p => (∅, SubsetHelper.emptySubset, FinSets.FinEmpty, refl p)
   | notH (impH (notH a) b), notImp prf1 prf2 =>
@@ -57,13 +58,13 @@
       h1.1 ∪ h2.1,
       SubsetHelper.subsetUnion h1.2 h2.2,
       FinSets.FinUnion h1.3 h2.3,
-      notImp (Prf.weaken h1.4 (byLeft __)) (Prf.weaken h2.4 (byRight __))
+      notImp (prfWeaken h1.4 (byLeft __)) (prfWeaken h2.4 (byRight __))
     )
   | notH toShow, notFalse p => (∅, SubsetHelper.emptySubset, FinSets.FinEmpty, notFalse p)
   | notH (equal a b), notEqual h => (∅, SubsetHelper.emptySubset, FinSets.FinEmpty, notEqual h)
   | notH (equal a b), notEqualSymm prf =>
     \let
-    | h => prfFinite prf
+      | h => prfFinite prf
     \in (h.1, h.2, h.3, notEqualSymm h.4)
   | notH toShow, notHFromimpH f' prf1 prf2 =>
     \let
@@ -73,5 +74,39 @@
       h1.1 ∪ h2.1,
       SubsetHelper.subsetUnion h1.2 h2.2,
       FinSets.FinUnion h1.3 h2.3,
-      notHFromimpH f' (Prf.weaken h1.4 (byLeft __)) (Prf.weaken h2.4 (byRight __))
+      notHFromimpH f' (prfWeaken h1.4 (byLeft __)) (prfWeaken h2.4 (byRight __))
+    )
+  | _, sub f t t' prf1 prf2 idp =>
+    \let
+      | h1 => prfFinite prf1
+      | h2 => prfFinite prf2
+    \in (
+      h1.1 ∪ h2.1,
+      SubsetHelper.subsetUnion h1.2 h2.2,
+      FinSets.FinUnion h1.3 h2.3,
+      sub f t t' (prfWeaken h1.4 (byLeft __)) (prfWeaken h2.4 (byRight __)) idp
+    )
+  | equal a b, symm prf =>
+    \let
+      | h => prfFinite prf
+    \in (h.1, h.2, h.3, symm h.4)
+  | equal a b, trans prf1 prf2 =>
+    \let
+      | h1 => prfFinite prf1
+      | h2 => prfFinite prf2
+    \in (
+      h1.1 ∪ h2.1,
+      SubsetHelper.subsetUnion h1.2 h2.2,
+      FinSets.FinUnion h1.3 h2.3,
+      trans (prfWeaken h1.4 (byLeft __)) (prfWeaken h2.4 (byRight __))
+    )
+  | equal _ _, fcong {f} prfs idp idp =>
+    \let
+      | prfs' => \lam i => prfFinite (prfs i)
+      | S => \lam i => (prfs' i).1
+    \in (
+      finiteUnion S,
+      SubsetHelper.subsetFiniteUnion {_} {S} (\lam i => (prfs' i).2),
+      FinSets.FinFiniteUnion S (\lam i => (prfs' i).3),
+      fcong (\lam i => prfWeaken (prfs' i).4 (SubsetHelper.subsetFiniteUnion' {_} {S} (i, idp))) idp idp
     )

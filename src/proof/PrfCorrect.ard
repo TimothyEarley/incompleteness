@@ -1,0 +1,63 @@
+\import Function.Meta
+\import Logic
+\import Meta
+\import Paths
+\import Paths.Meta
+\import proof.Proof
+\import semantics.Interpretation
+\import syntax.Context
+\import syntax.Substitution
+\import syntax.Syntax
+\open Interpretation
+
+\func prfCorrectness {_ : Language} {c : Context} {axioms : Theory c} {toShow : Formula c}
+                     (prf : Prf axioms toShow)
+  : axioms Interpretation.⊧I toShow
+\elim toShow, prf
+  | toShow, AXM e => \lam _ m => m e
+  | toShow, contra f prf1 prf2 => \lam I mAxioms => absurd $
+  ⊧.contradict (prfCorrectness prf2 I mAxioms) (prfCorrectness prf1 I mAxioms)
+  | impH a b, introImp prf => \lam I mAxioms mA => prfCorrectness prf I (⊧A.fromAdd mAxioms mA)
+  | equal a b, refl idp => \lam _ _ => idp
+  | notH (impH (notH f) g), notImp h1 h2 => \lam I mAxioms mImp =>
+      \let
+        | h1' => prfCorrectness h1 I mAxioms
+        | h2' => prfCorrectness h2 I mAxioms
+      \in h2' $ mImp $ h1'
+  | notH _, notFalse idp => \lam _ _ mH => mH (\lam _ => idp)
+  | notH (equal a b), notEqual h => \lam I _ evalEqual => h I evalEqual
+  | f, forAllElim fa e t prf => \lam I mAxioms =>
+      \let
+        | goal : I ⊧ Substitution.subst fa t => ⊧.fromSub (mAxioms e (evaluate I t))
+      \in prfCorrectness prf I (⊧A.fromAdd mAxioms goal)
+  | notH (equal a b), notEqualSymm prf => \lam I mAxioms p => prfCorrectness prf I mAxioms (inv p)
+  | notH f, notHFromimpH f' prf prf1 => \lam I mAxioms mF => prfCorrectness prf I mAxioms (prfCorrectness prf1 I mAxioms mF)
+  | _, sub f t t' prf prf' idp => \lam I mAxioms =>
+      \let
+        | h1 => prfCorrectness prf I mAxioms
+        | h2 => prfCorrectness prf' I mAxioms
+        | h1' => Interpretation.models.fromSub.substitutionLemma-> I {extend I (evaluate I t)}
+            (\case \elim __ \with {
+              | 0 => idp
+              | suc _ => idp
+            })
+            h1
+        | h1'' => rewrite h2 in h1'
+      \in Interpretation.models.fromSub.substitutionLemma<- I {extend I (evaluate I t')} (\case \elim __ \with {
+        | 0 => idp
+        | suc _ => idp
+      }) h1''
+  | equal a b, symm prf => \lam I mAxioms => inv $ prfCorrectness prf I mAxioms
+  | equal a b, trans prf1 prf2 => \lam I mAxioms => prfCorrectness prf1 I mAxioms *> prfCorrectness prf2 I mAxioms
+  | equal a_ _, fcong {f} {args} {args'} prfs idp idp =>
+    \let | prfs' => prfCorrectnessArray (\lam i => equal (args i) (args' i)) prfs
+    \in \lam I m => pmap (fun f) (ext (ext (\lam j => prfs' j I m)))
+  \where {
+    -- to work around termintation checking
+    \func prfCorrectnessArray {_ : Language} {c : Context} {axioms : Theory c} (toShow : Array (Formula c))
+                              (prfs : DArray (\lam i => Prf axioms (toShow i)))
+      : DArray (\lam i => axioms ⊧I toShow i)
+    \elim toShow, prfs
+      | nil, nil => nil
+      | a :: l, p :: prfs => prfCorrectness p :: prfCorrectnessArray l prfs
+  }

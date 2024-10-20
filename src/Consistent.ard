@@ -5,6 +5,7 @@
 \import decidable.DecLanguage
 \import decidable.FormulaCode
 \import proof.PrfFinite
+\import proof.PrfWeaken
 \import proof.Proof
 \import syntax.Context
 \import syntax.Syntax
@@ -18,7 +19,7 @@
       ∃ (f : Formula c) (Prf T f) (Prf T (notH f))
 
     \sfunc inconsistent->everything {_ : Language} {c : Context} {T : Theory c}
-                                    (h : Inconsistent T) (f' : Formula c) : TruncP (Prf T f')
+                                    (h : Inconsistent T) (f' : Formula c) : Prf' T f'
     \elim h
       | inP (f, prf1, prf2) => inP (contra f prf2 prf1)
 
@@ -37,7 +38,7 @@
               (prfF'.1 ∪ prfNotF'.1)
               (FinSets.FinUnion prfF'.3 prfNotF'.3)
               (SubsetHelper.subsetUnion prfF'.2 prfNotF'.2)
-              (inP (f, Prf.weaken prfF'.4 (byLeft __), Prf.weaken prfNotF'.4 (byRight __)))
+              (inP (f, prfWeaken prfF'.4 (byLeft __), prfWeaken prfNotF'.4 (byRight __)))
       }
 
     -- fin not even needed here
@@ -45,6 +46,6 @@
                         (h : Consistent T)
       : \Pi (T' : Theory c) (FinSet (Elements T')) (T' ⊆ T) -> Consistent T' => \lam _ _ T'subT iT' =>
         \case iT' \with {
-          | inP (f, prfF, prfNotF) => h (inP (f, Prf.weaken prfF T'subT, Prf.weaken prfNotF T'subT))
+          | inP (f, prfF, prfNotF) => h (inP (f, prfWeaken prfF T'subT, prfWeaken prfNotF T'subT))
         }
   }

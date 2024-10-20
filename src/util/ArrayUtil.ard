@@ -39,3 +39,10 @@
   }
 
 \func NoDupes {A : \Type} (a : Array A) : \Prop => \Pi {i i' : Fin a.len} (a i = a i') -> i = i'
+
+\func truncPArray {n : Nat} {B : Fin n -> \Type} (a : DArray {n} (\lam i => TruncP (B i))) : TruncP (DArray {n} B)
+  \elim n, a
+    | 0, nil => inP nil
+    | suc n, a :: as => \case a, truncPArray as \with {
+      | inP a, inP as => inP (a :: as)
+    }

@@ -1,0 +1,39 @@
+\import Data.Array
+\import Function.Meta
+\import Logic
+\import Paths.Meta
+\import proof.PrfWeaken
+\import proof.Proof
+\import syntax.Context
+\import syntax.Syntax
+
+\module PrfExtensions \where {
+  \open FormulaExtensions
+
+
+  \func prfNotFalseH {_ : Language} {c : Context} {axioms : Theory c} : Prf axioms (notH falseH) => notFalse idp
+
+  \func prfOrH1 {_ : Language} {c : Context} {axioms : Theory c} {a b : Formula c}
+                (h : Prf axioms a) : Prf axioms (orH a b) =>
+    introImp ((contra a (AXM (byRight idp))) (prfWeaken h (byLeft __)))
+
+  \func prfOrH2 {_ : Language} {c : Context} {axioms : Theory c} {a b : Formula c}
+                (h : Prf axioms b) : Prf axioms (orH a b) => introImp (prfWeaken h (byLeft __))
+
+  \func prfOrH' {_ : Language} {c : Context} {axioms : Theory c} {a : Array (Formula c)}
+                {f : Formula c} (fi : Index f a) (h : Prf axioms f) : Prf axioms (orH' a)
+  \elim a, fi
+    | nil, ((),_)
+    | a :: l, (0,idp) => rewrite (\peval orH' (a :: l)) $ prfOrH1 h
+    | a :: l, (suc i,p) => rewrite (\peval orH' (a :: l)) $ prfOrH2 $ prfOrH' (i,p) h
+
+  \func prfNotOr {_ : Language} {c : Context} {axioms : Theory c} {a b : Formula c}
+                 (h1 : Prf axioms (notH a)) (h2 : Prf axioms (notH b))
+    : Prf axioms (notH (orH a b)) => notImp h1 h2
+
+  \func prfNotOrH' {_ : Language} {c : Context} {axioms : Theory c} {a : Array (Formula c)}
+                   (h : \Pi (i : Fin a.len) -> Prf axioms (notH (a.at i))) : Prf axioms (notH (orH' a))
+  \elim a
+    | nil => rewrite (\peval orH' nil) prfNotFalseH
+    | a :: l => rewrite (\peval orH' (a :: l)) $ prfNotOr (h 0) (prfNotOrH' (\lam i => h (suc i)))
+}

@@ -1,4 +1,5 @@
 \import Data.Array
+\import Data.Fin (fsuc)
 \import Data.Or
 \import Equiv
 \import Function.Meta
@@ -21,6 +22,33 @@
 \func emptySet \alias ∅ {X : \Set} : Set X => \lam _ => Empty
 
 \func union \alias \infix 6 ∪ {X : \Set} (S S' : Set X) : Set X => \lam y => y ∈ S || y ∈ S'
+
+\func finiteUnion {X : \Set} (S : Array (Set X)) : Set X => \lam x => ∃ (i : Fin S.len) (x ∈ S i)
+  \where {
+    \func recursive {X : \Set} (S : Array (Set X)) : Set X
+    \elim S
+      | nil => ∅
+      | a :: l => a ∪ recursive l
+
+    \func asRecursive {X : \Set} {S : Array (Set X)} : finiteUnion S = recursive S
+    \elim S
+      | nil => ext (\lam _ => ext (\case __ \with {
+      (inP ((), _))
+      }, absurd))
+      | a :: l => \let rec => asRecursive {X} {l} \in unfold finiteUnion
+          (ext (\lam x => ext (
+            \case \elim __ \with {
+              | inP (0, h) => byLeft h
+              | inP (suc i, h) => byRight $ rewriteI rec $ inP (i, h)
+            },
+            \case \elim __ \with {
+              | byLeft h => inP (0, h)
+              | byRight h => \case rewriteI rec in h \with {
+                | inP (i, h') => inP (fsuc i, h')
+              }
+            }
+          )))
+  }
 
 \func without \alias \infix 6 ∖ {X : \Set} (S S' : Set X) : Set X => \lam y => \Sigma (y ∈ S) (y ∉ S')
 
@@ -75,19 +103,26 @@
     | byRight b => h' b
   }
 
+  \func subsetFiniteUnion {X : \Set} {S : Array (Set X)} {S' : Set X} (h : DArray {S.len} (\lam i => S i ⊆ S'))
+    : finiteUnion S ⊆ S' => \case __ \with {
+    | inP (i, e) => h i e
+  }
+
+  \func subsetFiniteUnion' {X : \Set} {S : Array (Set X)} {S' : Set X} (h : Index S' S)
+    : S' ⊆ finiteUnion S => \lam e => inP (h.1, rewrite h.2 e)
+
   \func subsetDelete {X : \Set} {S S' : Set X} {x : X} (h : S ⊆ add S' x) : delete S x ⊆ S' =>
     \lam d => \case h d.1 \with {
       | byLeft a => a
       | byRight b => absurd $ d.2 b
     }
 
-   \func addDelete {X : DecSet} {S : Set X} {x : X} : S ⊆ add (delete S x) x
-     => \lam {y} e => \case decideEq x y \with {
-       | yes p => byRight p
-       | no n => byLeft (e, n)
-     }
+  \func addDelete {X : DecSet} {S : Set X} {x : X} : S ⊆ add (delete S x) x => \lam {y} e => \case decideEq x y \with {
+    | yes p => byRight p
+    | no n => byLeft (e, n)
+  }
 
-    \func emptySubset {X : \Set} {S : Set X} : ∅ ⊆ S => \lam e => absurd e
+  \func emptySubset {X : \Set} {S : Set X} : ∅ ⊆ S => \lam e => absurd e
 }
 
 \module FinSets \where {
@@ -145,8 +180,14 @@
     }
   }
 
-  \func FinWithout {X : DecSet} {S S' : Set X} (h : FinSet (Elements S)) (d : \Pi (x : X) -> Dec (x ∈ S')) : FinSet (Elements (S ∖ S'))
-    => \case finToArray h \with {
+  \func FinFiniteUnion {X : DecSet} (S : Array (Set X))
+                       (h : DArray {S.len} (\lam i => FinSet (Elements (S i)))) : FinSet (Elements (finiteUnion S))
+    \elim S
+      | nil => rewrite finiteUnion.asRecursive FinEmpty
+      | a :: l => rewrite finiteUnion.asRecursive $ FinUnion (h 0) (rewriteI finiteUnion.asRecursive (FinFiniteUnion _ (\lam i => h (suc i))))
+
+  \func FinWithout {X : DecSet} {S S' : Set X} (h : FinSet (Elements S)) (d : \Pi (x : X) -> Dec (x ∈ S')) : FinSet (Elements (S ∖ S')) =>
+    \case finToArray h \with {
       | inP (a, p) => run {
         rewrite p,
         transportInv (\lam z => FinSet (Elements z)) (withoutOfArray' d),
@@ -154,12 +195,12 @@
       }
     }
 
-  \func FinEmpty {X : \Set} : FinSet (Elements {X} ∅)
-    => \let p : Elements ∅ = Empty => ext \new QEquiv {
+  \func FinEmpty {X : \Set} : FinSet (Elements {X} ∅) =>
+    \let p : Elements ∅ = Empty => ext \new QEquiv {
       | f e => usingOnly e.2 contradiction
       | ret => contradiction
       | ret_f e => usingOnly e.2 contradiction
       | f_sec => contradiction
     }
-       \in rewriteI p in EmptyFin
+    \in rewriteI p in EmptyFin
 }

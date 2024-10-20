@@ -1,0 +1,66 @@
+\import Function.Meta
+\import Logic
+\import Paths
+\import Relation.Equivalence
+\import proof.Proof
+\import semantics.Interpretation
+\import syntax.Context
+\import syntax.Syntax
+\import util.ArrayUtil
+
+\class TermCongruence \extends Equivalence
+  | L : Language
+  | c : Context
+  | A => Term c
+  | T : Theory c
+
+  | congFun : \Pi (f : L.Functions) (args args' : Array (Term c) (L.funArity f))
+                  (\Pi (i : Fin (L.funArity f)) -> args i ~ args' i)
+  -> apply f args ~ apply f args'
+  | congRel : \Pi (r : L.Relations) (args args' : Array (Term c) (L.relArity r))
+                  (\Pi (i : Fin (L.relArity r)) -> args i ~ args' i)
+                  (Prf T (atomic r args))
+  -> Prf T (atomic r args')
+
+\func ProvableEqualCongruence  {_ : Language} {c : Context} (T : Theory c) : TermCongruence \cowith
+  | L => _
+  | c => c
+  | T => T
+
+  | ~ t1 t2 => Prf' T (equal t1 t2)
+
+  | ~-symmetric => \case \elim __ \with {
+    | inP a => inP (symm a)
+  }
+  | ~-transitive => \case \elim __, \elim __ \with {
+    | inP a, inP a1 => inP (trans a a1)
+  }
+  | ~-reflexive => inP (refl idp)
+  | congFun f args args' h => \case truncPArray {funArity f} h \with {
+    | inP h' => inP (fcong h' idp idp)
+  }
+  | congRel => {?}
+
+\func TermInterpretation {_ : Language} {c : Context} (T : Theory c) : Interpretation c \cowith
+  | structure => \new Structure {
+    | Universe => Quotient {Term c} (~ {ProvableEqualCongruence T})
+    | rel r args => {?}
+    | fun f args => {?}
+  }
+  | variableValues v => in~ (var v)
+
+  \where {
+    \func termsAre~ {_ : Language} {c : Context} {T : Theory c} (t : Term c)
+      : Interpretation.evaluate (TermInterpretation T) t = in~ t
+    \elim t
+      | var v => idp
+      | apply f args => {?}
+
+    \func isModelForEqual {_ : Language} {c : Context} {T : Theory c} {t t' : Term c}
+      : (TermInterpretation T) ⊧ (equal t t') <-> Prf' T (equal t t') =>
+      (\lam p => Quotient.equalityEquiv _ $ inv (termsAre~ t) *> p *> termsAre~ t',
+       \lam p => termsAre~ t *> path (~-equiv t t' p) *> inv (termsAre~ t'))
+
+    \func isModelForAtomic {_ : Language} {c : Context} {T : Theory c} {r : Relations} {args : Array (Term c) (relArity r)}
+      : (TermInterpretation T) ⊧ (atomic r args) <-> T ⊧I (atomic r args) => {?}
+  }
