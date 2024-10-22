@@ -54,22 +54,36 @@
           (\lam i => in~ (args i))
           => ext (\lam i => termsAre~ (args i))
 
+          | p' : Quotient.liftArray (\lam {_} => ~ {ProvableEqualCongruence T}) (\lam {_} _ => ~-reflexive {ProvableEqualCongruence T}) (\lam i => in~ (args i))
+            = {Quotient {DArray {funArity f} (\lam _ => Term c)} (\lam t t' => \Pi (j : Fin (funArity f)) -> t j ~ t' j)} in~ args => liftArrayElim
+
           | goal : (\case Quotient.liftArray (\lam {_} => ~) (\lam {_} _ => ~-reflexive) (\lam i => Interpretation.evaluate (TermInterpretation T) (args i)) \with {
             | in~ a => in~ (apply f a)
             | ~-equiv x y r i =>
               (\case truncPArray (\new DArray (\lam (j : Fin (funArity {Interpretation.L {TermInterpretation T}} f)) => x j ~ y j) r) \with {
                 | inP r' => path (~-equiv (apply f x) (apply f y) (inP (fcong r' idp idp)))
               }) @ i
-          }) = in~ (apply f args) => transportInv
-              (\lam z => (\case Quotient.liftArray (\lam {_} => ~) (\lam {_} _ => ~-reflexive) z \with {
-                | in~ a => in~ (apply f a)
-                | ~-equiv x y r i =>
-                  (\case truncPArray (\new DArray (\lam (j : Fin (funArity {Interpretation.L {TermInterpretation T}} f)) => x j ~ y j) r) \with {
-                    | inP r' => path (~-equiv (apply f x) (apply f y) (inP (fcong r' idp idp)))
-                  }) @ i
-              }) = in~ (apply f args))
-              p
-              ({?})
+          }) = in~ (apply f args) =>
+            run {transportInv
+                     (\lam z => (\case Quotient.liftArray (\lam {_} => ~) (\lam {_} _ => ~-reflexive) z \with {
+                       | in~ a => in~ (apply f a)
+                       | ~-equiv x y r i =>
+                         (\case truncPArray (\new DArray (\lam (j : Fin (funArity {Interpretation.L {TermInterpretation T}} f)) => x j ~ y j) r) \with {
+                           | inP r' => path (~-equiv (apply f x) (apply f y) (inP (fcong r' idp idp)))
+                         }) @ i
+                     }) = in~ (apply f args))
+                     p,
+                 transportInv
+                     (\lam z => (\case z \with {
+                       | in~ a => in~ (apply f a)
+                       | ~-equiv x y r i =>
+                         (\case truncPArray (\new DArray (\lam (j : Fin (funArity {Interpretation.L {TermInterpretation T}} f)) => x j ~ y j) r) \with {
+                           | inP r' => path (~-equiv (apply f x) (apply f y) (inP (fcong r' idp idp)))
+                         }) @ i
+                     }) = in~ (apply f args))
+                     p',
+                 idp
+            }
         \in unfold goal
 
     \func isModelForEqual {_ : Language} {c : Context} {T : Theory c} {t t' : Term c}
