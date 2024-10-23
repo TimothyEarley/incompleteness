@@ -16,34 +16,33 @@
 \func TermInterpretation {_ : Language} {c : Context} (T : Theory c) : Interpretation c \cowith
   | structure => \new Structure {
     | Universe => Quotient {Term c} (~ {ProvableEqualCongruence T})
-    | fun f args => \case Quotient.liftArray
-                              {funArity f}
-                              {\lam _ => Term c}
-                              (\lam {_} => ~)
-                              (\lam _ => ~-reflexive)
-                              args
-    \with {
-      | in~ a => in~ (apply f a)
-      | ~-equiv x y r => \case truncPArray {funArity f} r \with {
-        | inP r' => ~-equiv {_} _ _ (inP (fcong r' idp idp))
-      }
-    }
-    | rel r args => \case Quotient.liftArray
-                              {relArity r}
-                              {\lam _ => Term c}
-                              (\lam t t' => ~ {ProvableEqualCongruence T} t t')
-                              (\lam _ => ~-reflexive {ProvableEqualCongruence T})
-                              args \with {
-      | in~ a => Prf' T (atomic r a)
-      | ~-equiv x y h => \case truncPArray {relArity r} h \with {
-        | inP h' => ext (\lam (inP p) => inP (rcong (\lam i => symm (h' i)) p),
-                         \lam (inP p) => inP (rcong h' p))
-      }
-    }
+    | fun f args => overArray args (Quotient {Term c} (~ {ProvableEqualCongruence T}))
+        (in~ $ apply f __)
+        (\lam d => ~-equiv {_} _ _ (inP (fcong d idp idp)))
+    | rel r args => overArray args \Prop
+        (\lam z => Prf' T (atomic r z))
+        (\lam h' => ext (\lam (inP p) => inP (rcong (\lam i => symm (h' i)) p), \lam (inP p) => inP (rcong h' p)))
   }
   | variableValues v => in~ (var v)
 
   \where {
+    \func overArray{_ : Language} {c : Context} {T : Theory c}
+                   {n : Nat} (args : Array (Quotient {Term c} (~ {ProvableEqualCongruence T})) n)
+
+                   (R : \Set)
+                   (f : Array (Term c) n -> R)
+                   (e : \Pi {x y : Array (Term c) n} (DArray (\lam (i : Fin n) => Prf T (equal (x i) (y i)))) -> f x = f y)
+      : R =>
+      \case Quotient.liftArray {n} {\lam _ => Term c} (\lam t t' => ~ {ProvableEqualCongruence T} t t') (\lam _ => ~-reflexive {ProvableEqualCongruence T}) args \with {
+        | in~ a => f a
+        | ~-equiv x y h => \case truncPArray {n} h \with {
+          | inP h' => e h'
+        }
+      }
+
+    \func funOfIn~ {_ : Language} {c : Context} {T : Theory c} {f : Functions} {args : Array (Term c) (funArity f)}
+      : fun {structure {TermInterpretation T}} f (\lam i => in~ (args i)) = in~ (apply f args) => {?}
+
     \func termsAre~ {_ : Language} {c : Context} {T : Theory c} (t : Term c)
       : Interpretation.evaluate (TermInterpretation T) t = in~ t
     \elim t
@@ -94,5 +93,15 @@
     \func isModelForAtomic {_ : Language} {c : Context} {T : Theory c} {r : Relations} {args : Array (Term c) (relArity r)}
       : (TermInterpretation T) ⊧ (atomic r args) <--> Prf T (atomic r args) =>
       (\lam m => {?},
-       \lam prf => \let foo : rel {structure {TermInterpretation T}} r (\lam i => in~ (args i)) => unfold {?} \in {?})
+       \lam prf =>
+           \let
+             | h : rel {structure {TermInterpretation T}} r (\lam i => in~ (args i)) => unfold {?}
+
+             | goal : rel {structure {TermInterpretation T}} r (\lam i => Interpretation.evaluate (TermInterpretation T) (args i)) =>
+               transport
+                   (\lam z => rel {structure {TermInterpretation T}} r z)
+                   {\lam i => in~ (args i)} {\lam i => Interpretation.evaluate (TermInterpretation T) (args i)}
+                   (ext (\lam i => inv $ termsAre~ (args i)))
+                   h
+           \in goal)
   }
