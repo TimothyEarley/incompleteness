@@ -11,7 +11,6 @@
 \import syntax.Context
 \import syntax.Syntax
 \import util.ArrayUtil
-\import util.LogicUtil
 \open Interpretation (⊧)
 
 \func TermInterpretation {_ : Language} {c : Context} (T : Theory c) : Interpretation c \cowith
@@ -41,10 +40,11 @@
       }
 
     \func overArray= {_ : Language} {c : Context} {T : Theory c}
-                     {n : Nat} {args : Array (Term c) n}
+                     {n : Nat} (args : Array (Term c) n)
                      {R : \Set} {f : Array (Term c) n -> R}
                      {e : \Pi {x y : Array (Term c) n} (DArray (\lam (i : Fin n) => Prf T (equal (x i) (y i)))) -> f x = f y}
-      : overArray (\lam i => in~ (args i)) R f e = f args => unfold overArray $ rewrite (liftArray= {n} {\lam (_ : Fin n) => Term c}) idp
+      : overArray (\lam i => in~ (args i)) R f e = f args =>
+      unfold overArray $ rewrite (liftArray= {n} {\lam (_ : Fin n) => Term c}) idp
       \where {
         \func liftArray= {k : Nat} {A : Fin k -> \Type}
                          {R : \Pi {j : Fin k} -> A j -> A j -> \Type}
@@ -59,50 +59,23 @@
             \in rewrite rec $ idp
       }
 
-    \func funOfIn~ {_ : Language} {c : Context} {T : Theory c} {f : Functions} {args : Array (Term c) (funArity f)}
-      : fun {structure {TermInterpretation T}} f (\lam i => in~ (args i)) = in~ (apply f args) => {?}
-
     \func termsAre~ {_ : Language} {c : Context} {T : Theory c} (t : Term c)
       : Interpretation.evaluate (TermInterpretation T) t = in~ t
     \elim t
       | var v => idp
       | apply f args =>
         \let
-          | p : (\lam i => Interpretation.evaluate (TermInterpretation T) (args i)) =
-          (\lam i => in~ (args i))
-          => ext (\lam i => termsAre~ (args i))
-
-          | p' : Quotient.liftArray (\lam {_} => ~ {ProvableEqualCongruence T}) (\lam {_} _ => ~-reflexive {ProvableEqualCongruence T}) (\lam i => in~ (args i))
-            = {Quotient {DArray {funArity f} (\lam _ => Term c)} (\lam t t' => \Pi (j : Fin (funArity f)) -> t j ~ t' j)} in~ args => liftArrayElim
-
-          | goal : (\case Quotient.liftArray (\lam {_} => ~) (\lam {_} _ => ~-reflexive) (\lam i => Interpretation.evaluate (TermInterpretation T) (args i)) \with {
-            | in~ a => in~ (apply f a)
-            | ~-equiv x y r i =>
-              (\case truncPArray (\new DArray (\lam (j : Fin (funArity {Interpretation.L {TermInterpretation T}} f)) => x j ~ y j) r) \with {
-                | inP r' => path (~-equiv (apply f x) (apply f y) (inP (fcong r' idp idp)))
-              }) @ i
-          }) = in~ (apply f args) =>
-            run {transportInv
-                     (\lam z => (\case Quotient.liftArray (\lam {_} => ~) (\lam {_} _ => ~-reflexive) z \with {
-                       | in~ a => in~ (apply f a)
-                       | ~-equiv x y r i =>
-                         (\case truncPArray (\new DArray (\lam (j : Fin (funArity {Interpretation.L {TermInterpretation T}} f)) => x j ~ y j) r) \with {
-                           | inP r' => path (~-equiv (apply f x) (apply f y) (inP (fcong r' idp idp)))
-                         }) @ i
-                     }) = in~ (apply f args))
-                     p,
-                 transportInv
-                     (\lam z => (\case z \with {
-                       | in~ a => in~ (apply f a)
-                       | ~-equiv x y r i =>
-                         (\case truncPArray (\new DArray (\lam (j : Fin (funArity {Interpretation.L {TermInterpretation T}} f)) => x j ~ y j) r) \with {
-                           | inP r' => path (~-equiv (apply f x) (apply f y) (inP (fcong r' idp idp)))
-                         }) @ i
-                     }) = in~ (apply f args))
-                     p',
-                 idp
-            }
-        \in unfold goal
+          | p : (\lam i => Interpretation.evaluate (TermInterpretation T) (args i)) = (\lam i => in~ (args i)) =>
+            ext (\lam i => termsAre~ (args i))
+        \in run {
+          unfold,
+          transportInv (\lam z => overArray
+              z
+              (Quotient (~))
+              (\lam p0 => in~ (apply f p0))
+              (\lam {x} {y} d => path (~-equiv (apply f x) (apply f y) (inP (fcong d idp idp)))) = in~ (apply f args)) p,
+          overArray= args
+        }
 
     \func isModelForEqual {_ : Language} {c : Context} {T : Theory c} {t t' : Term c}
       : (TermInterpretation T) ⊧ (equal t t') <-> Prf' T (equal t t') =>
@@ -110,17 +83,36 @@
        \lam p => termsAre~ t *> path (~-equiv t t' p) *> inv (termsAre~ t'))
 
     \func isModelForAtomic {_ : Language} {c : Context} {T : Theory c} {r : Relations} {args : Array (Term c) (relArity r)}
-      : (TermInterpretation T) ⊧ (atomic r args) <--> Prf T (atomic r args) =>
-      (\lam m => {?},
-       \lam prf =>
-           \let
-             | h : rel {structure {TermInterpretation T}} r (\lam i => in~ (args i)) => unfold {?}
-
-             | goal : rel {structure {TermInterpretation T}} r (\lam i => Interpretation.evaluate (TermInterpretation T) (args i)) =>
-               transport
-                   (\lam z => rel {structure {TermInterpretation T}} r z)
-                   {\lam i => in~ (args i)} {\lam i => Interpretation.evaluate (TermInterpretation T) (args i)}
-                   (ext (\lam i => inv $ termsAre~ (args i)))
-                   h
-           \in goal)
+      : (TermInterpretation T) ⊧ (atomic r args) <-> Prf' T (atomic r args) =>
+      \let
+        | p : (\lam i => Interpretation.evaluate (TermInterpretation T) (args i)) = (\lam i => in~ (args i)) =>
+          ext (\lam i => termsAre~ (args i))
+      \in (\lam m =>
+               \let
+                 | m' => unfold in m
+                 | m'' => transport (\lam z =>
+                     overArray z \Prop (\lam z => Prf' T (atomic r z))
+                         (\lam {x} {y} h' => propExt (\lam p0 => \case p0 \with {
+                           | inP p => inP (rcong (\new DArray (\lam i => Prf T (equal (y i) (x i))) (\lam i => symm (h' i))) p)
+                         })
+                             (\lam p0 => \case p0 \with {
+                               | inP p => inP (rcong h' p)
+                             }))) p m'
+                  | m''' => rewrite (overArray= args) in m''
+               \in m''',
+           \lam prf => run {
+             unfold,
+             transportInv (\lam z =>
+                 overArray
+                     z
+                     \Prop
+                     (\lam z => Prf' T (atomic r z))
+                     (\lam {x} {y} h' => propExt (\lam p0 => \case p0 \with {
+                       | inP p => inP (rcong (\new DArray (\lam i => Prf T (equal (y i) (x i))) (\lam i => symm (h' i))) p)
+                     }) (\lam p0 => \case p0 \with {
+                       | inP p => inP (rcong h' p)
+                     }))) p,
+             rewrite (overArray= args),
+             prf
+           })
   }
