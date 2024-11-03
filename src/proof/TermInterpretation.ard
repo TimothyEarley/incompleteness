@@ -1,3 +1,4 @@
+\import Data.Fin
 \import Function.Meta
 \import Logic
 \import Meta
@@ -28,7 +29,6 @@
   \where {
     \func overArray{_ : Language} {c : Context} {T : Theory c}
                    {n : Nat} (args : Array (Quotient {Term c} (~ {ProvableEqualCongruence T})) n)
-
                    (R : \Set)
                    (f : Array (Term c) n -> R)
                    (e : \Pi {x y : Array (Term c) n} (DArray (\lam (i : Fin n) => Prf T (equal (x i) (y i)))) -> f x = f y)
@@ -38,6 +38,25 @@
         | ~-equiv x y h => \case truncPArray {n} h \with {
           | inP h' => e h'
         }
+      }
+
+    \func overArray= {_ : Language} {c : Context} {T : Theory c}
+                     {n : Nat} {args : Array (Term c) n}
+                     {R : \Set} {f : Array (Term c) n -> R}
+                     {e : \Pi {x y : Array (Term c) n} (DArray (\lam (i : Fin n) => Prf T (equal (x i) (y i)))) -> f x = f y}
+      : overArray (\lam i => in~ (args i)) R f e = f args => unfold overArray $ rewrite (liftArray= {n} {\lam (_ : Fin n) => Term c}) idp
+      \where {
+        \func liftArray= {k : Nat} {A : Fin k -> \Type}
+                         {R : \Pi {j : Fin k} -> A j -> A j -> \Type}
+                         {refl : \Pi {j : Fin k} (x : A j) -> R x x}
+                         {ts : DArray A}
+          : Quotient.liftArray {k} R refl (\lam j => in~ (ts j)) = in~ ts
+        \elim k, ts
+          | 0, nil => idp
+          | suc k, a :: ts =>
+            \let
+              | rec => liftArray= {k} {\lam j => A (fsuc j)} {\lam {_} => R} {\lam {_} => refl} {ts}
+            \in rewrite rec $ idp
       }
 
     \func funOfIn~ {_ : Language} {c : Context} {T : Theory c} {f : Functions} {args : Array (Term c) (funArity f)}
