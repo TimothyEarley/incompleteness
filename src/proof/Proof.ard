@@ -36,6 +36,8 @@
             (pa : a = apply f args) (pb : b = apply f args')
   }
 
+  | cAnd a b => and (Prf axioms a) (Prf axioms b)
+
 
   -- TODO what is this rule?
   -- ¬(¬f -> g) = ¬(f ∨ g) = ¬f ∧ ¬g
