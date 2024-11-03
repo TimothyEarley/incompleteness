@@ -1,16 +1,19 @@
 \import Data.Fin
 \import Function.Meta
 \import Logic
+\import Logic.Meta
 \import Meta
 \import Paths
 \import Paths.Meta
 \import Relation.Equivalence
 \import proof.Proof
-\import proof.TermModel
+\import proof.TermCongruence
 \import semantics.Interpretation
 \import syntax.Context
+\import syntax.Substitution
 \import syntax.Syntax
 \import util.ArrayUtil
+\import util.LogicUtil
 \open Interpretation (⊧)
 
 \func TermInterpretation {_ : Language} {c : Context} (T : Theory c) : Interpretation c \cowith
@@ -98,7 +101,7 @@
                              (\lam p0 => \case p0 \with {
                                | inP p => inP (rcong h' p)
                              }))) p m'
-                  | m''' => rewrite (overArray= args) in m''
+                 | m''' => rewrite (overArray= args) in m''
                \in m''',
            \lam prf => run {
              unfold,
@@ -115,4 +118,32 @@
              rewrite (overArray= args),
              prf
            })
+
+    \func isModelForExists {_ : Language} {c : Context} {T : Theory c} {f : Formula (suc c)}
+      : (TermInterpretation T) ⊧ cExists f <--> ∃ (t : Term c) ((TermInterpretation T) ⊧ Substitution.subst f t) =>
+      (\case __ \with {
+        | inP (in~ t, m) => inP
+            (
+              t,
+              ⊧.fromSub.substitutionLemma<-
+                  (TermInterpretation T)
+                  (\lam (v : Fin (suc c)) => \case \elim v \with {
+                    | 0 => inv $ termsAre~ t
+                    | suc v => termsAre~ (var v)
+                  })
+                  m
+            )
+      },
+       \lam (inP (t, m)) => inP
+           (
+             in~ t,
+             ⊧.fromSub.substitutionLemma->
+                 (TermInterpretation T)
+                 (\lam (v : Fin (suc c)) => \case \elim v \with {
+                   | 0 => inv $ termsAre~ t
+                   | suc v => termsAre~ (var v)
+                 })
+                 m
+           )
+      )
   }
