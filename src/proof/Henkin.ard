@@ -1,0 +1,45 @@
+\import Consistent
+\import Function.Meta
+\import Logic
+\import Paths
+\import proof.NegationComplete
+\import proof.Proof
+\import proof.TermInterpretation
+\import semantics.Interpretation
+\import syntax.Context
+\import syntax.Syntax
+\import util.LogicUtil
+\open Interpretation (⊧)
+
+\lemma henkin {_ : Language} {c : Context} {T : Theory c}
+              (con : Consistent T)
+              (neg : NegationComplete T)
+  -- contains witnesses
+              (f : Formula c)
+  : Prf' T f <-> (TermInterpretation T) ⊧ f
+\elim f
+  | equal a b => <->sym TermInterpretation.isModelForEqual
+  | atomic r terms => <->sym TermInterpretation.isModelForAtomic
+  | notH f => <->notH con neg <->* <->not (henkin con neg f)
+  | impH a f => {?}
+  | cAnd a b => <->cAnd <->* <->sigma (henkin con neg a) (henkin con neg b)
+  | forAllH f => {?}
+  | cExists f => {?}
+  \where {
+    \lemma <->notH {_ : Language} {c : Context} {T : Theory c} (con : Consistent T) (neg : NegationComplete T)
+                   {f : Formula c}
+      : Prf' T (notH f) <-> Not (Prf' T f) => (
+      \lam (inP prfA) (inP prfB) => con (inP (f, prfB, prfA)),
+      \lam n => \case neg f \with {
+        | byLeft h => absurd $ n $ inP $ h
+        | byRight h => inP h
+      }
+    )
+
+    \lemma <->cAnd {_ : Language} {c : Context} {T : Theory c} {f g : Formula c}
+      : Prf' T (cAnd f g) <-> (\Sigma (Prf' T f) (Prf' T g)) =>
+      (
+        \lam p => {?},
+        \lam _x => {?}
+      )
+  }

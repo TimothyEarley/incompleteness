@@ -1,0 +1,7 @@
+\import Logic
+\import proof.Proof
+\import syntax.Context
+\import syntax.Syntax
+
+\func NegationComplete {_ : Language} {c : Context} (T : Theory c) : \Prop
+  => \Pi (f : Formula c) -> Prf T f || Prf T (notH f)

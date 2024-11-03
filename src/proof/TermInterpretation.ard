@@ -148,7 +148,7 @@
       )
 
     \func isModelForAll {_ : Language} {c : Context} {T : Theory c} {f : Formula (suc c)}
-      : (TermInterpretation T) ⊧ forAllH f <--> ( \Pi (t : Term c) -> (TermInterpretation T) ⊧ Substitution.subst f t ) =>
+      : (TermInterpretation T) ⊧ forAllH f <-> ( \Pi (t : Term c) -> (TermInterpretation T) ⊧ Substitution.subst f t ) =>
       (\lam m t =>
            \let m' => m (in~ t)
            \in ⊧.fromSub.substitutionLemma<-

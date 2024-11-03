@@ -1,13 +1,25 @@
 \import Function.Meta
+\import Logic
 \import Meta
 \import Paths.Meta
 \import Relation.Equivalence
 
-\func \infix 5 <--> (A B : \Type) : \Type => \Sigma (A -> B) (B -> A)
-
 \func liftArrayElim {k : Nat} {A : Fin k -> \Type} {R : \Pi {j : Fin k} -> A j -> A j -> \Type} {refl : \Pi {j : Fin k} (x : A j) -> R x x}
                     {ts : DArray A}
   : Quotient.liftArray R refl (\lam i => in~ (ts i)) = {Quotient {DArray A} (\lam f g => \Pi (j : Fin ts.len) -> R (f j) (g j))} in~ ts
-  \elim k, ts
-    | 0, nil => idp
-    | suc k, a :: ts => unfold $ rewrite (liftArrayElim {k} {\lam i => A (suc i)}) idp
+\elim k, ts
+  | 0, nil => idp
+  | suc k, a :: ts => unfold $ rewrite (liftArrayElim {k} {\lam i => A (suc i)}) idp
+
+\lemma \infixl 6 <->* {P Q S : \Prop} (f : P <-> Q) (g : Q <-> S) : P <-> S => <->trans f g
+
+\lemma <->not {P Q : \Prop} (h : P <-> Q) : Not P <-> Not Q => (
+  \lam nP q => nP $ h.2 q,
+  \lam nQ p => nQ $ h.1 p
+)
+
+\lemma <->sigma {P Q R S : \Prop} (h : P <-> Q) (h' : R <-> S) : (\Sigma P R) <-> (\Sigma Q S) =>
+  (
+    \lam (p, r) => (h.1 p, h'.1 r),
+    \lam (q, s) => (h.2 q, h'.2 s)
+  )
