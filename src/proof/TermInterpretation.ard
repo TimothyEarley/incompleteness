@@ -120,7 +120,7 @@
            })
 
     \func isModelForExists {_ : Language} {c : Context} {T : Theory c} {f : Formula (suc c)}
-      : (TermInterpretation T) ⊧ cExists f <--> ∃ (t : Term c) ((TermInterpretation T) ⊧ Substitution.subst f t) =>
+      : (TermInterpretation T) ⊧ cExists f <-> ∃ (t : Term c) ((TermInterpretation T) ⊧ Substitution.subst f t) =>
       (\case __ \with {
         | inP (in~ t, m) => inP
             (
@@ -146,4 +146,25 @@
                  m
            )
       )
+
+    \func isModelForAll {_ : Language} {c : Context} {T : Theory c} {f : Formula (suc c)}
+      : (TermInterpretation T) ⊧ forAllH f <--> ( \Pi (t : Term c) -> (TermInterpretation T) ⊧ Substitution.subst f t ) =>
+      (\lam m t =>
+           \let m' => m (in~ t)
+           \in ⊧.fromSub.substitutionLemma<-
+               (TermInterpretation T)
+               (\lam (v : Fin (suc c)) => \case \elim v \with {
+                 | 0 => inv $ termsAre~ t
+                 | suc v => termsAre~ (var v)
+               })
+               m',
+       \lam h (in~ t) =>
+           \let h' => h t
+           \in ⊧.fromSub.substitutionLemma->
+               (TermInterpretation T)
+               (\lam (v : Fin (suc c)) => \case \elim v \with {
+                 | 0 => inv $ termsAre~ t
+                 | suc v => termsAre~ (var v)
+               })
+               h')
   }
