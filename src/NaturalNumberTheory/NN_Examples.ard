@@ -13,6 +13,4 @@
   \lemma one+one=2-model : NNInterpretation Interpretation.⊧ equal (Plus One One) Two
     => idp
 
-  \lemma one+one=2-model' : NNInterpretation Interpretation.⊧ equal (Plus One One) Two
-    => Interpretation.impliesFromAxioms (equal (Plus One One) Two) modelsNN one+one=2
 }

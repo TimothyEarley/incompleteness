@@ -1,7 +1,6 @@
 \import Consistent
 \import Function.Meta
 \import Logic
-\import Paths
 \import proof.NegationComplete
 \import proof.Proof
 \import proof.TermInterpretation
