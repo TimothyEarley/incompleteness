@@ -1,0 +1,8 @@
+\import Logic.Meta
+\import proof.Proof
+\import syntax.Context
+\import syntax.Substitution
+\import syntax.Syntax
+
+\func ContainsWitness {_ : Language} {c : Context} (T : Theory c) : \Prop
+  => \Pi (f : Formula (Context.inc c)) -> ∃ (t : Term c) (Prf T (impH (cExists f) (Substitution.subst f t)))

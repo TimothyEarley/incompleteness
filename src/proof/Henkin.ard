@@ -1,6 +1,8 @@
 \import Consistent
 \import Function.Meta
 \import Logic
+\import Relation.Equivalence
+\import proof.ContainsWitnesses
 \import proof.NegationComplete
 \import proof.Proof
 \import proof.TermInterpretation
@@ -13,17 +15,24 @@
 \lemma henkin {_ : Language} {c : Context} {T : Theory c}
               (con : Consistent T)
               (neg : NegationComplete T)
-  -- contains witnesses
+              (wit : ContainsWitness T)
               (f : Formula c)
   : Prf' T f <-> (TermInterpretation T) ⊧ f
 \elim f
   | equal a b => <->sym TermInterpretation.isModelForEqual
   | atomic r terms => <->sym TermInterpretation.isModelForAtomic
-  | notH f => <->notH con neg <->* <->not (henkin con neg f)
+  | notH f => <->notH con neg <->* <->not (henkin con neg wit f)
   | impH a f => {?}
-  | cAnd a b => <->cAnd <->* <->sigma (henkin con neg a) (henkin con neg b)
+  | cAnd a b => <->cAnd <->* <->sigma (henkin con neg wit a) (henkin con neg wit b)
   | forAllH f => {?}
-  | cExists f => {?}
+  | cExists f => (
+    -- Prf to model
+    \case \elim __, wit f \with {
+      | inP p, inP (t, h) => inP (in~ t, {?})
+    },
+    -- Model to Prf
+    {?}
+  )
   \where {
     \lemma <->notH {_ : Language} {c : Context} {T : Theory c} (con : Consistent T) (neg : NegationComplete T)
                    {f : Formula c}

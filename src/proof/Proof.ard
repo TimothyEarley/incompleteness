@@ -22,6 +22,9 @@
       (t t' : Term c)
       (Prf axioms (Substitution.subst f t)) (Prf axioms (equal t t'))
       (p : toShow = Substitution.subst f t')
+
+    -- TODO: did i miss this rule somewhere?
+    | modusPonens (f : Formula c) (prf : Prf axioms f) (prf' : Prf axioms (impH f toShow))
   }
   | impH a b => introImp (Prf (add axioms a) b)
 

@@ -62,6 +62,7 @@
         => ext (ext (\lam j => prfs' j I m))
       \in rewrite h prf'
   | cAnd a toShow, and prf1 prf2 => \lam I m => (prfCorrectness prf1 I m, prfCorrectness prf2 I m)
+  | toShow, modusPonens f prf1 prf2 => \lam I m => prfCorrectness prf2 I m (prfCorrectness prf1 I m)
   \where {
     -- to work around termintation checking
 

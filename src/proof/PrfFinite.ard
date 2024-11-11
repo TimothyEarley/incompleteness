@@ -134,3 +134,13 @@
       FinSets.FinUnion h1.3 h2.3,
       and (prfWeaken h1.4 (byLeft __)) (prfWeaken h2.4 (byRight __))
     )
+  | toShow, modusPonens f prf1 prf2 =>
+    \let
+      | h1 => prfFinite prf1
+      | h2 => prfFinite prf2
+    \in (
+      h1.1 ∪ h2.1,
+      SubsetHelper.subsetUnion h1.2 h2.2,
+      FinSets.FinUnion h1.3 h2.3,
+      modusPonens f (prfWeaken h1.4 (byLeft __)) (prfWeaken h2.4 (byRight __))
+    )
