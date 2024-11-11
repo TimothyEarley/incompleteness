@@ -63,6 +63,18 @@
       \in rewrite h prf'
   | cAnd a toShow, and prf1 prf2 => \lam I m => (prfCorrectness prf1 I m, prfCorrectness prf2 I m)
   | toShow, modusPonens f prf1 prf2 => \lam I m => prfCorrectness prf2 I m (prfCorrectness prf1 I m)
+  | cExists toShow, cExistsIntro t prf => \lam I m =>
+      \let
+        h => prfCorrectness prf I m
+      \in inP (
+        Interpretation.evaluate I t,
+        models.fromSub.substitutionLemma-> {_} {suc c} {c} {toShow} I {extend I (evaluate I t)} {Substitution.substOne t}
+            (\lam (v : Fin (suc c)) => \case \elim v \with {
+              | 0 => idp
+              | suc f => idp
+            })
+            h
+      )
   \where {
     -- to work around termintation checking
 

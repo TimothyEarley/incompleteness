@@ -26,3 +26,4 @@
   | atomic r terms, rcong prfs prf => rcong (\lam i => prfWeaken (prfs i) sub) (prfWeaken prf sub)
   | cAnd a b, and prf1 prf2 => and (prfWeaken prf1 sub) (prfWeaken prf2 sub)
   | toShow, modusPonens f prf1 prf2 => modusPonens f (prfWeaken prf1 sub) (prfWeaken prf2 sub)
+  | cExists f, cExistsIntro t prf => cExistsIntro t (prfWeaken prf sub)

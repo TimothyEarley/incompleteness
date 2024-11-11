@@ -41,6 +41,8 @@
 
   | cAnd a b => and (Prf axioms a) (Prf axioms b)
 
+  | cExists f => cExistsIntro (t : Term c) (prf : Prf axioms (Substitution.subst f t))
+
 
   -- TODO what is this rule?
   -- ¬(¬f -> g) = ¬(f ∨ g) = ¬f ∧ ¬g

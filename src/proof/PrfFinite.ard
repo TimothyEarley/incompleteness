@@ -144,3 +144,7 @@
       FinSets.FinUnion h1.3 h2.3,
       modusPonens f (prfWeaken h1.4 (byLeft __)) (prfWeaken h2.4 (byRight __))
     )
+  | cExists toShow, cExistsIntro t prf =>
+    \let
+      | h => prfFinite prf
+    \in (h.1, h.2, h.3, cExistsIntro t h.4)
