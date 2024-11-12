@@ -1,0 +1,23 @@
+name: check
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get the Arend jar
+        uses: dsaltares/fetch-gh-release-asset@1.1.2
+        with:
+          repo: JetBrains/Arend
+          file: Arend.jar
+      - uses: actions/setup-java@v4.5.0
+        with:
+          java-version: 17
+      - name: run checker
+        run: java -jar Arend.jar .            
