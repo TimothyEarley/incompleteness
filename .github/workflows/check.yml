@@ -16,13 +16,13 @@ jobs:
         with:
           repo: JetBrains/Arend
           file: Arend.jar
-          version: 1.10
+          version: 'v1.10'
       - name: Get arend-lib
         uses: dsaltares/fetch-gh-release-asset@1.1.2
         with:
           repo: JetBrains/arend-lib
           file: arend-lib.zip
-          version: 1.10.0
+          version: 'v1.10.0'
       - uses: actions/setup-java@v4.5.0
         with:
           java-version: 17
