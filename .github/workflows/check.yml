@@ -19,5 +19,6 @@ jobs:
       - uses: actions/setup-java@v4.5.0
         with:
           java-version: 17
+          distribution: temurin
       - name: run checker
         run: java -jar Arend.jar .            
