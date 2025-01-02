@@ -19,6 +19,10 @@
 
   \func extends {_ : Language} {c c' : Context} (s : Substitution c c') : Substitution (inc c) (inc c') =>
     var 0 :: (\lam i => liftTerm {_} {1} (s i))
+    \where {
+      \func atSuc {_ : Language} {c c' : Context} (s : Substitution c c') {v : variable c}
+        : extends s (fsuc v) = Rename.renameTerm (s v) fsuc => idp
+    }
 
   -- extending means addong an array to the left
 
@@ -61,20 +65,46 @@
 
 \func Substitution {_ : Language} (c c' : Context) => variable c -> Term c'
   \where {
-    \open Rename
-
     \func substituteTerm {_ : Language} {c c' : Context} (t : Term c) (s : Substitution c c') : Term c'
     \elim t
       | var v => s v
       | apply f args => apply f $ \lam i => substituteTerm (args i) s
-    \where {
-      \func compose {_ : Language} {c c' c'' : Context} {t : Term c}
-                    {s : Substitution c c'} {s' : Substitution c' c''}
-        : substituteTerm (substituteTerm t s) s' = substituteTerm t (\lam v => substituteTerm (s v) s')
+      \where {
+        \func id {_ : Language} {c : Context} {t : Term c} : substituteTerm t var = t
+        \elim t
+          | var v => idp
+          | apply f args => pmap (apply f) (ext $ ext $ (\lam j => id {_} {c} {args j}))
+
+        \func compose {_ : Language} {c c' c'' : Context} {t : Term c}
+                      {s : Substitution c c'} {s' : Substitution c' c''}
+          : substituteTerm (substituteTerm t s) s' = substituteTerm t (\lam v => substituteTerm (s v) s')
         \elim t
           | var v => idp
           | apply f args => pmap (apply f) (ext $ ext (\lam j => compose {_} {_} {_} {_} {args j}))
-    }
+      }
+
+    -- TODO: this proof seems very complicated. What is the general principle?
+    \func distributeExtends {_ : Language} {c c' c'' : Context} {s : Substitution c c'} {s' : Substitution c' c''} :
+      (\lam v => substituteTerm (Extend.extends s v) (Extend.extends s')) = {Substitution (suc c) (suc c'')}
+      Extend.extends (\lam v => substituteTerm (s v) s') => ext (helper s s')
+      \where {
+        \private \func helper {_ : Language} {c c' c'' : Context} (s : Substitution c c') (s' : Substitution c' c'')
+                              (v : variable (suc c)) :
+          substituteTerm (Extend.extends s v) (Extend.extends s') = Extend.extends (\lam v' => substituteTerm (s v') s') v
+        \elim v
+          | 0 => idp
+          | suc f => run {
+            rewrite (Extend.extends.atSuc s),
+            rewrite (Extend.extends.atSuc (\lam v' => substituteTerm (s v') s' )),
+            helper2 (s f) s'
+          }
+
+        \private \func helper2 {_ : Language} {c' c'' : Context} (t : Term c') (s' : Substitution c' c'') :
+          substituteTerm (Rename.renameTerm t fsuc) (Extend.extends s') = Rename.renameTerm (substituteTerm t s') fsuc
+          \elim t
+            | var v => idp
+            | apply f args => pmap (apply f) (ext $ ext (\lam j => helper2 (args j) s'))
+      }
 
     \func substitute {_ : Language} {c c' : Context} (f : Formula c) (s : Substitution c c') : Formula c'
     \elim f
@@ -83,27 +113,21 @@
       | notH f => notH $ substitute f s
       | impH antecedent consequent => impH (substitute antecedent s) (substitute consequent s)
       | cAnd a b => cAnd (substitute a s) (substitute b s)
-      | forAllH f => forAllH $ substitute f (\case __ \with {
-        | 0 => var zero
-        | suc i => renameTerm (s i) fsuc
-      })
-      | cExists f => cExists $ substitute f (\case __ \with {
-        | 0 => var zero
-        | suc i => renameTerm (s i) fsuc
-      }) -- TODO extract funtion
-    \where {
-      \func compose {_ : Language} {c c' c'' : Context} {f : Formula c}
-                    {s : Substitution c c'} {s' : Substitution c' c''}
-        : substitute (substitute f s) s' = substitute f (\lam v => substituteTerm (s v) s')
-      \elim f
-        | equal a b => pmap2 equal substituteTerm.compose substituteTerm.compose
-        | atomic r terms => {?}
-        | notH f => {?}
-        | impH a f => {?}
-        | cAnd a f => {?}
-        | forAllH f => {?}
-        | cExists f => {?}
-    }
+      | forAllH f => forAllH $ substitute f (Extend.extends s)
+      | cExists f => cExists $ substitute f (Extend.extends s)
+      \where {
+        \func compose {_ : Language} {c c' c'' : Context} {f : Formula c}
+                      {s : Substitution c c'} {s' : Substitution c' c''}
+          : substitute (substitute f s) s' = substitute f (\lam v => substituteTerm (s v) s')
+        \elim f
+          | equal a b => pmap2 equal substituteTerm.compose substituteTerm.compose
+          | atomic r terms => pmap (atomic r) (ext (ext (\lam _ => substituteTerm.compose)))
+          | notH f => pmap notH compose
+          | impH a f => pmap2 impH compose compose
+          | cAnd a f => pmap2 cAnd compose compose
+          | forAllH f => pmap forAllH (compose *> pmap (substitute f) distributeExtends)
+          | cExists f => pmap cExists (compose *> pmap (substitute f) distributeExtends)
+      }
 
     \func subst {_ : Language} {c : Context} (f : Formula (inc c)) (t : Term c) : Formula c =>
       substitute f (substOne t)
@@ -138,10 +162,7 @@
           (\lam z => substitute z s = cExists' (suc n) (substitute f (Extend.extendsN (var 0 :: \new Array (Term (suc c')) c (\lam (v : Fin c) => Rename.renameTerm (s v) fsuc)) n)))
           (inv $ \peval cExists' (suc n) f),
       transport
-          (\lam z => cExists (substitute (cExists' n f) (\lam (p0 : variable (inc c)) => \case p0 \with {
-            | zero => var 0
-            | suc i => Rename.renameTerm (s i) fsuc
-          })) = z)
+          (\lam z => cExists (substitute (cExists' n f) (Extend.extends s)) = z)
           (inv $ \peval cExists' (suc n) _),
       pmap cExists,
       (*>) subsituteCExists',

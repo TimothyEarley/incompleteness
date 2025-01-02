@@ -31,6 +31,9 @@
   \func liftTerm0 {_ : Language} {c : Context} {t : Term c} : liftTerm {_} {0} t = t
     => unfold liftTerm (Rename.renameTerm.id (\lam _ => idp))
 
+  \func liftTerm1 {_ : Language} {c : Context} {t : Term c} : liftTerm {_} {1} t = Rename.renameTerm t fsuc
+    => idp
+
   \func compose1 {_ : Language} {c m : Context} {t : Term c}
     : liftTerm {_} {1} {m + c} (liftTerm {_} {m} {c} t) = liftTerm {_} {suc m} {c} t
     => unfold liftTerm Rename.renameTerm.compose
@@ -44,11 +47,15 @@
       (forAllH $ forAllH $ equal #0 #1) => idp
   }
 
+\func subsituteLiftTerm1S {_ : Language} {c c' : Context} {t : Term c} {s : Substitution (suc c) c'}
+  : Substitution.substituteTerm (liftTerm {_} {1} t) s = Substitution.substituteTerm t (\lam v => s (fsuc v))
+\elim t
+  | var v => idp
+  | apply f args => pmap (apply f) (ext $ ext $ (\lam j => subsituteLiftTerm1S {_} {c} {c'} {args j}))
+
 \func subsituteLiftTerm1 {_ : Language} {c : Context} {t t' : Term c}
   : Substitution.substituteTerm (liftTerm {_} {1} t) (Substitution.substOne t') = t
-  \elim t
-    | var v => idp
-    | apply f args => pmap (apply f) (ext $ ext (\lam j => subsituteLiftTerm1 {_} {c} {args j} {t'}))
+  => subsituteLiftTerm1S *> Substitution.substituteTerm.id
 
 \func subsituteLiftTerm1' {_ : Language} {c : Context} {t t' : Term c}
   : Substitution.substituteTerm (Rename.renameTerm t fsuc) (Substitution.substOne t') = t
