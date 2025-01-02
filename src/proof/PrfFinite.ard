@@ -5,6 +5,7 @@
 \import Set.Fin
 \import Set.Subset
 \import decidable.DecLanguage
+\import decidable.FormulaCode
 \import proof.PrfWeaken
 \import proof.Proof
 \import syntax.Context
