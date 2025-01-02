@@ -33,7 +33,7 @@
     \private \func helper {a b n : Nat} (p : cPair a b = n) : cUnpair n = (a, b)
     \elim n
       | 0 => \case \elim a, \elim b, \elim p \with {
-        | 0, 0, p => rewrite (\peval cUnpair _, \peval cUnpair 0) idp
+        | 0, 0, p => rewrite (\peval cUnpair 0) idp
         | suc a1, b1, p => using (rewrite (\peval cPair _ _) in p) contradiction
         | 0, suc b1, p => using (rewrite (\peval cPair _ _) in p) contradiction
       }

@@ -15,10 +15,10 @@
 
   \func prfOrH1 {_ : Language} {c : Context} {axioms : Theory c} {a b : Formula c}
                 (h : Prf axioms a) : Prf axioms (orH a b) =>
-    introImp ((contra a (AXM (byRight idp))) (prfWeaken h (byLeft __)))
+    introImp ((contra a (AXM (byRight idp))) (prfWeaken h (byLeft __))) idp
 
   \func prfOrH2 {_ : Language} {c : Context} {axioms : Theory c} {a b : Formula c}
-                (h : Prf axioms b) : Prf axioms (orH a b) => introImp (prfWeaken h (byLeft __))
+                (h : Prf axioms b) : Prf axioms (orH a b) => introImp (prfWeaken h (byLeft __)) idp
 
   \func prfOrH' {_ : Language} {c : Context} {axioms : Theory c} {a : Array (Formula c)}
                 {f : Formula c} (fi : Index f a) (h : Prf axioms f) : Prf axioms (orH' a)
@@ -29,7 +29,7 @@
 
   \func prfNotOr {_ : Language} {c : Context} {axioms : Theory c} {a b : Formula c}
                  (h1 : Prf axioms (notH a)) (h2 : Prf axioms (notH b))
-    : Prf axioms (notH (orH a b)) => notImp h1 h2
+    : Prf axioms (notH (orH a b)) => notImp h1 h2 idp
 
   \func prfNotOrH' {_ : Language} {c : Context} {axioms : Theory c} {a : Array (Formula c)}
                    (h : \Pi (i : Fin a.len) -> Prf axioms (notH (a.at i))) : Prf axioms (notH (orH' a))

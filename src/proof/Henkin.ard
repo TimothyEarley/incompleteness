@@ -48,6 +48,6 @@
       : Prf' T (cAnd f g) <-> (\Sigma (Prf' T f) (Prf' T g)) =>
       (
         \lam p => {?},
-        \lam (inP prf1, inP prf2) => inP (and prf1 prf2)
+        \lam (inP prf1, inP prf2) => inP (and prf1 prf2 idp)
       )
   }

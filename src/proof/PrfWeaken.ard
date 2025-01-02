@@ -8,22 +8,24 @@
 \func prfWeaken {_ : Language} {c : Context} {axioms axioms' : Theory c}
                 {f : Formula c} (prf : Prf axioms' f)
                 (sub : axioms' ⊆ axioms)  : Prf axioms f
-\elim f, prf
-  | f, AXM e => AXM (sub e)
-  | _, contra f' prf1 prf2 => contra f' (prfWeaken prf1 sub) (prfWeaken prf2 sub)
-  | impH f f1, introImp prf => introImp (prfWeaken prf $ SubsetHelper.subsetAdd sub)
-  | equal a b, refl p => refl p
-  | notH (impH (notH f) g), notImp h1 h2 => notImp (prfWeaken h1 sub) (prfWeaken h2 sub)
-  | notH _, notFalse idp => notFalse idp
-  | notH (equal a b), notEqual h => notEqual h
-  | f, forAllElim fa e t prf => forAllElim fa (sub e) t (prfWeaken prf (SubsetHelper.subsetAdd sub))
-  | notH (equal a b), notEqualSymm prf => notEqualSymm (prfWeaken prf sub)
-  | notH f, notHFromimpH f' prf prf1 => notHFromimpH f' (prfWeaken prf sub) (prfWeaken prf1 sub)
-  | _, sub f t t' prf1 prf2 idp => Prf.sub f t t' (prfWeaken prf1 sub) (prfWeaken prf2 sub) idp
-  | equal a b, symm prf => symm (prfWeaken prf sub)
-  | equal a b, trans prf1 prf2 => trans (prfWeaken prf1 sub) (prfWeaken prf2 sub)
-  | equal a b, fcong prfs pa pb => fcong (\lam i => prfWeaken (prfs i) sub) pa pb
-  | atomic r terms, rcong prfs prf => rcong (\lam i => prfWeaken (prfs i) sub) (prfWeaken prf sub)
-  | cAnd a b, and prf1 prf2 => and (prfWeaken prf1 sub) (prfWeaken prf2 sub)
-  | toShow, modusPonens f prf1 prf2 => modusPonens f (prfWeaken prf1 sub) (prfWeaken prf2 sub)
-  | cExists f, cExistsIntro t prf => cExistsIntro t (prfWeaken prf sub)
+\elim prf
+  | AXM e => AXM (sub e)
+  | contra f' prf1 prf2 => contra f' (prfWeaken prf1 sub) (prfWeaken prf2 sub)
+  | introImp prf p => introImp (prfWeaken prf $ SubsetHelper.subsetAdd sub) p
+  | refl p p' => refl p p'
+  | notImp h1 h2 p => notImp (prfWeaken h1 sub) (prfWeaken h2 sub) p
+  | notFalse idp => notFalse idp
+  | notEqual h p => notEqual h p
+  | forAllElim fa e t prf => forAllElim fa (sub e) t (prfWeaken prf (SubsetHelper.subsetAdd sub))
+  | notEqualSymm prf p => notEqualSymm (prfWeaken prf sub) p
+  | notHFromimpH f' prf prf1 p => notHFromimpH f' (prfWeaken prf sub) (prfWeaken prf1 sub) p
+  | sub f t t' prf1 prf2 idp => Prf.sub f t t' (prfWeaken prf1 sub) (prfWeaken prf2 sub) idp
+  | symm prf p => symm (prfWeaken prf sub) p
+  | trans prf1 prf2 p => trans (prfWeaken prf1 sub) (prfWeaken prf2 sub) p
+  | fcong prfs pa pb p => fcong (\lam i => prfWeaken (prfs i) sub) pa pb p
+  | rcong prfs prf p => rcong (\lam i => prfWeaken (prfs i) sub) (prfWeaken prf sub) p
+  | and prf1 prf2 p => and (prfWeaken prf1 sub) (prfWeaken prf2 sub) p
+  | modusPonens f prf1 prf2 => modusPonens f (prfWeaken prf1 sub) (prfWeaken prf2 sub)
+  | cExistsIntro t prf p => cExistsIntro t (prfWeaken prf sub) p
+  | cAndElim1 prf p => cAndElim1 (prfWeaken prf sub) p
+  | cAndElim2 prf p => cAndElim2 (prfWeaken prf sub) p

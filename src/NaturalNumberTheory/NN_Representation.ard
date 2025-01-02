@@ -32,7 +32,7 @@
           | _, (j, idp, _) => run {
             rewrite representationFormula.substRepresentation,
             PrfExtensions.prfOrH' (j, idp),
-            refl idp
+            refl idp idp
           }
         }
 

@@ -1,16 +1,9 @@
-\import Function.Meta
 \import Logic
-\import Meta
-\import Paths
-\import Paths.Meta
 \import Relation.Equivalence
 \import proof.Proof
-\import semantics.Interpretation
 \import syntax.Context
 \import syntax.Syntax
 \import util.ArrayUtil
-\import util.LogicUtil
-\open Interpretation (⊧, ⊧I)
 
 \class TermCongruence \extends Equivalence
   | L : Language
@@ -34,15 +27,15 @@
   | ~ t1 t2 => Prf' T (equal t1 t2)
 
   | ~-symmetric => \case \elim __ \with {
-    | inP a => inP (symm a)
+    | inP a => inP (symm a idp)
   }
   | ~-transitive => \case \elim __, \elim __ \with {
-    | inP a, inP a1 => inP (trans a a1)
+    | inP a, inP a1 => inP (trans a a1 idp)
   }
-  | ~-reflexive => inP (refl idp)
+  | ~-reflexive => inP (refl idp idp)
   | congFun f _ _ h => \case truncPArray {funArity f} h \with {
-    | inP h' => inP (fcong h' idp idp)
+    | inP h' => inP (fcong h' idp idp idp)
   }
   | congRel r _ _ h prf => \case truncPArray {relArity r} h \with {
-    | inP h' => inP (rcong h' prf)
+    | inP h' => inP (rcong h' prf idp)
   }

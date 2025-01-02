@@ -13,7 +13,6 @@
 \import syntax.Substitution
 \import syntax.Syntax
 \import util.ArrayUtil
-\import util.LogicUtil
 \open Interpretation (⊧)
 
 \func TermInterpretation {_ : Language} {c : Context} (T : Theory c) : Interpretation c \cowith
@@ -21,10 +20,10 @@
     | Universe => Quotient {Term c} (~ {ProvableEqualCongruence T})
     | fun f args => overArray args (Quotient {Term c} (~ {ProvableEqualCongruence T}))
         (in~ $ apply f __)
-        (\lam d => ~-equiv {_} _ _ (inP (fcong d idp idp)))
+        (\lam d => ~-equiv {_} _ _ (inP (fcong d idp idp idp)))
     | rel r args => overArray args \Prop
         (\lam z => Prf' T (atomic r z))
-        (\lam h' => ext (\lam (inP p) => inP (rcong (\lam i => symm (h' i)) p), \lam (inP p) => inP (rcong h' p)))
+        (\lam h' => ext (\lam (inP p) => inP (rcong (\lam i => symm (h' i) idp) p idp), \lam (inP p) => inP (rcong h' p idp)))
   }
   | variableValues v => in~ (var v)
 
@@ -76,7 +75,7 @@
               z
               (Quotient (~))
               (\lam p0 => in~ (apply f p0))
-              (\lam {x} {y} d => path (~-equiv (apply f x) (apply f y) (inP (fcong d idp idp)))) = in~ (apply f args)) p,
+              (\lam {x} {y} d => path (~-equiv (apply f x) (apply f y) (inP (fcong d idp idp idp)))) = in~ (apply f args)) p,
           overArray= args
         }
 
@@ -96,10 +95,10 @@
                  | m'' => transport (\lam z =>
                      overArray z \Prop (\lam z => Prf' T (atomic r z))
                          (\lam {x} {y} h' => propExt (\lam p0 => \case p0 \with {
-                           | inP p => inP (rcong (\new DArray (\lam i => Prf T (equal (y i) (x i))) (\lam i => symm (h' i))) p)
+                           | inP p => inP (rcong (\new DArray (\lam i => Prf T (equal (y i) (x i))) (\lam i => symm (h' i) idp)) p idp)
                          })
                              (\lam p0 => \case p0 \with {
-                               | inP p => inP (rcong h' p)
+                               | inP p => inP (rcong h' p idp)
                              }))) p m'
                  | m''' => rewrite (overArray= args) in m''
                \in m''',
@@ -111,9 +110,9 @@
                      \Prop
                      (\lam z => Prf' T (atomic r z))
                      (\lam {x} {y} h' => propExt (\lam p0 => \case p0 \with {
-                       | inP p => inP (rcong (\new DArray (\lam i => Prf T (equal (y i) (x i))) (\lam i => symm (h' i))) p)
+                       | inP p => inP (rcong (\new DArray (\lam i => Prf T (equal (y i) (x i))) (\lam i => symm (h' i) idp)) p idp)
                      }) (\lam p0 => \case p0 \with {
-                       | inP p => inP (rcong h' p)
+                       | inP p => inP (rcong h' p idp)
                      }))) p,
              rewrite (overArray= args),
              prf

@@ -13,26 +13,26 @@
 \func prfCorrectness {_ : Language} {c : Context} {axioms : Theory c} {toShow : Formula c}
                      (prf : Prf axioms toShow)
   : axioms Interpretation.⊧I toShow
-\elim toShow, prf
-  | toShow, AXM e => \lam _ m => m e
-  | toShow, contra f prf1 prf2 => \lam I mAxioms => absurd $
+\elim prf
+  | AXM e => \lam _ m => m e
+  | contra f prf1 prf2 => \lam I mAxioms => absurd $
   ⊧.contradict (prfCorrectness prf2 I mAxioms) (prfCorrectness prf1 I mAxioms)
-  | impH a b, introImp prf => \lam I mAxioms mA => prfCorrectness prf I (⊧A.fromAdd mAxioms mA)
-  | equal a b, refl idp => \lam _ _ => idp
-  | notH (impH (notH f) g), notImp h1 h2 => \lam I mAxioms mImp =>
+  | introImp prf idp => \lam I mAxioms mA => prfCorrectness prf I (⊧A.fromAdd mAxioms mA)
+  | refl idp idp => \lam _ _ => idp
+  | notImp h1 h2 idp => \lam I mAxioms mImp =>
       \let
         | h1' => prfCorrectness h1 I mAxioms
         | h2' => prfCorrectness h2 I mAxioms
       \in h2' $ mImp $ h1'
-  | notH _, notFalse idp => \lam _ _ mH => mH (\lam _ => idp)
-  | notH (equal a b), notEqual h => \lam I _ evalEqual => h I evalEqual
-  | f, forAllElim fa e t prf => \lam I mAxioms =>
+  | notFalse idp => \lam _ _ mH => mH (\lam _ => idp)
+  | notEqual h idp => \lam I _ evalEqual => h I evalEqual
+  | forAllElim fa e t prf => \lam I mAxioms =>
       \let
         | goal : I ⊧ Substitution.subst fa t => ⊧.fromSub (mAxioms e (evaluate I t))
       \in prfCorrectness prf I (⊧A.fromAdd mAxioms goal)
-  | notH (equal a b), notEqualSymm prf => \lam I mAxioms p => prfCorrectness prf I mAxioms (inv p)
-  | notH f, notHFromimpH f' prf prf1 => \lam I mAxioms mF => prfCorrectness prf I mAxioms (prfCorrectness prf1 I mAxioms mF)
-  | _, sub f t t' prf prf' idp => \lam I mAxioms =>
+  | notEqualSymm prf idp => \lam I mAxioms p => prfCorrectness prf I mAxioms (inv p)
+  | notHFromimpH f' prf prf1 idp => \lam I mAxioms mF => prfCorrectness prf I mAxioms (prfCorrectness prf1 I mAxioms mF)
+  | sub f t t' prf prf' idp => \lam I mAxioms =>
       \let
         | h1 => prfCorrectness prf I mAxioms
         | h2 => prfCorrectness prf' I mAxioms
@@ -47,12 +47,12 @@
         | 0 => idp
         | suc _ => idp
       }) h1''
-  | equal a b, symm prf => \lam I mAxioms => inv $ prfCorrectness prf I mAxioms
-  | equal a b, trans prf1 prf2 => \lam I mAxioms => prfCorrectness prf1 I mAxioms *> prfCorrectness prf2 I mAxioms
-  | equal a_ _, fcong {f} {args} {args'} prfs idp idp =>
+  | symm prf idp => \lam I mAxioms => inv $ prfCorrectness prf I mAxioms
+  | trans prf1 prf2 idp => \lam I mAxioms => prfCorrectness prf1 I mAxioms *> prfCorrectness prf2 I mAxioms
+  | fcong {_} {_} {f} {args} {args'} prfs idp idp idp =>
     \let prfs' => prfCorrectnessArray (\lam i => equal (args i) (args' i)) prfs
     \in \lam I m => pmap (fun f) (ext (ext (\lam j => prfs' j I m)))
-  | atomic r args, rcong {args'} prfs prf => \lam (I : Interpretation) m =>
+  | rcong {r} {args} {args'} prfs prf idp => \lam (I : Interpretation) m =>
       \let
         | prf' => prfCorrectness prf I m
         | prfs' => prfCorrectnessArray (\lam i => equal (args i) (args' i)) prfs
@@ -61,20 +61,22 @@
           (\new Array (Universe {I.structure}) (relArity r) (\lam i => evaluate I (args' i)))
         => ext (ext (\lam j => prfs' j I m))
       \in rewrite h prf'
-  | cAnd a toShow, and prf1 prf2 => \lam I m => (prfCorrectness prf1 I m, prfCorrectness prf2 I m)
-  | toShow, modusPonens f prf1 prf2 => \lam I m => prfCorrectness prf2 I m (prfCorrectness prf1 I m)
-  | cExists toShow, cExistsIntro t prf => \lam I m =>
+  | and prf1 prf2 idp => \lam I m => (prfCorrectness prf1 I m, prfCorrectness prf2 I m)
+  | modusPonens f prf1 prf2 => \lam I m => prfCorrectness prf2 I m (prfCorrectness prf1 I m)
+  | cExistsIntro t prf idp => \lam I m =>
       \let
         h => prfCorrectness prf I m
       \in inP (
         Interpretation.evaluate I t,
-        models.fromSub.substitutionLemma-> {_} {suc c} {c} {toShow} I {extend I (evaluate I t)} {Substitution.substOne t}
+        models.fromSub.substitutionLemma-> {_} {suc c} {c} {_} I {extend I (evaluate I t)} {Substitution.substOne t}
             (\lam (v : Fin (suc c)) => \case \elim v \with {
               | 0 => idp
               | suc f => idp
             })
             h
       )
+  | cAndElim1 prf idp => \lam I m => \let rec => prfCorrectness prf I m \in rec.1
+  | cAndElim2 prf idp => \lam I m => \let rec => prfCorrectness prf I m \in rec.2
   \where {
     -- to work around termintation checking
 

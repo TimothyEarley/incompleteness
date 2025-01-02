@@ -8,53 +8,56 @@
 
 -- the type of proofs.
 
-\data Prf {L : Language} {c : Context} (axioms : Theory c) (toShow : Formula c) : \Set \elim toShow
-  | toShow => {
-    | AXM (e : toShow ∈ axioms)
+\data Prf {L : Language} {c : Context} (axioms : Theory c) (toShow : Formula c) : \Set
+  | AXM (e : toShow ∈ axioms)
   -- not classical, so needs decider in prdCorrectness
-    -- | PC (psi : Formula c) (Prf (add axioms psi) toShow) (Prf (add axioms (notH psi)) toShow)
-    -- | Ctr (psi : Formula c) (Prf (add axioms (notH toShow)) psi) (Prf (add axioms (notH toShow)) (notH psi))
-    | contra (f : Formula c) (Prf axioms (notH f)) (Prf axioms f)
-    | forAllElim (f : Formula (suc c)) (forAllH f ∈ axioms) (t : Term c) (Prf (add axioms (Substitution.subst f t)) toShow)
+  -- | PC (psi : Formula c) (Prf (add axioms psi) toShow) (Prf (add axioms (notH psi)) toShow)
+  -- | Ctr (psi : Formula c) (Prf (add axioms (notH toShow)) psi) (Prf (add axioms (notH toShow)) (notH psi))
+  | contra (f : Formula c) (Prf axioms (notH f)) (Prf axioms f)
+  | forAllElim (f : Formula (suc c)) (forAllH f ∈ axioms) (t : Term c) (Prf (add axioms (Substitution.subst f t)) toShow)
 
-    | sub
-      (f : Formula (Context.inc c))
-      (t t' : Term c)
-      (Prf axioms (Substitution.subst f t)) (Prf axioms (equal t t'))
-      (p : toShow = Substitution.subst f t')
+  | sub
+    (f : Formula (Context.inc c))
+    (t t' : Term c)
+    (Prf axioms (Substitution.subst f t)) (Prf axioms (equal t t'))
+    (p : toShow = Substitution.subst f t')
 
-    -- TODO: did i miss this rule somewhere?
-    | modusPonens (f : Formula c) (prf : Prf axioms f) (prf' : Prf axioms (impH f toShow))
-  }
-  | impH a b => introImp (Prf (add axioms a) b)
+  -- TODO: did i miss this rule somewhere?
+  | modusPonens (f : Formula c) (prf : Prf axioms f) (prf' : Prf axioms (impH f toShow))
 
-  | equal a b => {
-    | refl (a = b)
+  | cAndElim1 {f g : Formula c} (prf : Prf axioms (cAnd f g)) (toShow = f)
+  | cAndElim2 {f g : Formula c} (prf : Prf axioms (cAnd f g)) (toShow = g)
+  | introImp {a b : Formula c} (Prf (add axioms a) b) (toShow = impH a b)
+
+  | refl {a b : Term c} (a = b) (toShow = equal a b)
 
   -- TODO too lazy to prove stuff with sub atm, so use special cases
-    | symm (Prf axioms (equal b a))
-    | trans {t : Term c} (Prf axioms (equal a t)) (Prf axioms (equal t b))
-    | fcong {f : Functions} {args args' : Array (Term c) (funArity f)}
-            (prfs : DArray {funArity f} (\lam i => Prf axioms (equal (args i) (args' i))))
-            (pa : a = apply f args) (pb : b = apply f args')
-  }
+  | symm {a b : Term c} (Prf axioms (equal b a)) (toShow = equal a b)
+  | trans {a b : Term c} {t : Term c} (Prf axioms (equal a t)) (Prf axioms (equal t b)) (toShow = equal a b)
+  | fcong {a b : Term c} {f : Functions} {args args' : Array (Term c) (funArity f)}
+          (prfs : DArray {funArity f} (\lam i => Prf axioms (equal (args i) (args' i))))
+          (pa : a = apply f args) (pb : b = apply f args') (toShow = equal a b)
 
-  | cAnd a b => and (Prf axioms a) (Prf axioms b)
+  | and {a b : Formula c} (Prf axioms a) (Prf axioms b) (toShow = cAnd a b)
 
-  | cExists f => cExistsIntro (t : Term c) (prf : Prf axioms (Substitution.subst f t))
+  | cExistsIntro {f : Formula (suc c)} (t : Term c) (prf : Prf axioms (Substitution.subst f t)) (toShow = cExists f)
 
 
   -- TODO what is this rule?
   -- ¬(¬f -> g) = ¬(f ∨ g) = ¬f ∧ ¬g
-  | notH (impH (notH f) g) => notImp (Prf axioms (notH f)) (Prf axioms (notH g))
+  | notImp {f g : Formula c} (Prf axioms (notH f)) (Prf axioms (notH g)) (toShow = notH (impH (notH f) g))
 
   -- more crutches
-  | notH f => notFalse (f = FormulaExtensions.falseH)
-  | notH (equal a b) => notEqual (\Pi (I : Interpretation c) -> Not (Interpretation.evaluate I a = Interpretation.evaluate I b))
-  | notH (equal a b) => notEqualSymm (Prf axioms (notH (equal b a)))
-  | notH f => notHFromimpH (f' : Formula c) (h : Prf axioms (notH f')) (h' : Prf axioms (impH f f'))
-  | atomic r args => rcong {args' : Array (Term c) (relArity r)}
-                           (prfs : DArray {relArity r} (\lam i => Prf axioms (equal (args i) (args' i))))
-                           (prf : Prf axioms (atomic r args'))
+  | notFalse (toShow = notH FormulaExtensions.falseH)
+  | notEqual {a b : Term c}
+             (\Pi (I : Interpretation c) -> Not (Interpretation.evaluate I a = Interpretation.evaluate I b)) (toShow = notH (equal a b))
+  | notEqualSymm {a b : Term c}
+                 (Prf axioms (notH (equal b a))) (toShow = notH (equal a b))
+  | notHFromimpH {f : Formula c} (f' : Formula c) (h : Prf axioms (notH f')) (h' : Prf axioms (impH f f')) (toShow = notH f)
+  | rcong {r : Relations}
+          {args args' : Array (Term c) (relArity r)}
+          (prfs : DArray {relArity r} (\lam i => Prf axioms (equal (args i) (args' i))))
+          (prf : Prf axioms (atomic r args'))
+          (toShow = atomic r args)
 
 \func Prf' {_ : Language} {c : Context} (axioms : Theory c) (toShow : Formula c) : \Prop => TruncP (Prf axioms toShow)

@@ -77,7 +77,7 @@
 \func prfNotEqualNumbers {a b : Term 0} (ha : isSimpleNumber a) (hb : isSimpleNumber b) (h : Not (a = b)) : Prf NN (notH (equal a b))
 \elim a, b, ha, hb, h
   | apply LNN.Zero nil, apply LNN.Succ (b :: nil), ha, hb, h =>
-    forAllElim _ (inP (0, idp)) b (notEqualSymm (AXM (byRight idp)))
+    forAllElim _ (inP (0, idp)) b (notEqualSymm (AXM (byRight idp)) idp)
   | apply LNN.Succ (a :: nil), apply LNN.Zero nil, ha, hb, h =>
     forAllElim _ (inP (0, idp)) a (AXM (byRight idp))
   | apply LNN.Zero nil, apply LNN.Zero nil, ha, hb, h => contradiction
@@ -107,5 +107,5 @@
             idp
           })
         }
-      \in notHFromimpH _ h instance
+      \in notHFromimpH _ h instance idp
   }
