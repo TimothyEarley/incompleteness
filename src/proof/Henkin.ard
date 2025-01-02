@@ -47,7 +47,7 @@
     \lemma <->cAnd {_ : Language} {c : Context} {T : Theory c} {f g : Formula c}
       : Prf' T (cAnd f g) <-> (\Sigma (Prf' T f) (Prf' T g)) =>
       (
-        \lam p => {?},
+        \lam (inP h) => (inP (cAndElim1 h idp), inP (cAndElim2 h idp)),
         \lam (inP prf1, inP prf2) => inP (and prf1 prf2 idp)
       )
   }
