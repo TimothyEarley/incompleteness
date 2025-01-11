@@ -39,15 +39,15 @@
         | h1 => prfCorrectness prf I mAxioms
         | h2 => prfCorrectness prf' I mAxioms
         | h1' => Interpretation.models.fromSub.substitutionLemma-> I {extend I (evaluate I t)}
-            (\case \elim __ \with {
-              | 0 => idp
-              | suc _ => idp
+            (\case \elim __, __ \with {
+              | 0, _ => idp
+              | suc _, _ => idp
             })
             h1
         | h1'' => rewrite h2 in h1'
-      \in Interpretation.models.fromSub.substitutionLemma<- I {extend I (evaluate I t')} (\case \elim __ \with {
-        | 0 => idp
-        | suc _ => idp
+      \in Interpretation.models.fromSub.substitutionLemma<- I {extend I (evaluate I t')} (\case \elim __, __ \with {
+        | 0, _ => idp
+        | suc _, _ => idp
       }) h1''
   | symm prf idp => \lam I mAxioms => inv $ prfCorrectness prf I mAxioms
   | trans prf1 prf2 idp => \lam I mAxioms => prfCorrectness prf1 I mAxioms *> prfCorrectness prf2 I mAxioms
@@ -71,7 +71,7 @@
       \in inP (
         Interpretation.evaluate I t,
         models.fromSub.substitutionLemma-> {_} {suc c} {c} {_} I {extend I (evaluate I t)} {Substitution.substOne t}
-            (\lam (v : Fin (suc c)) => \case \elim v \with {
+            (\lam (v : Fin (suc c)) _ => \case \elim v \with {
               | 0 => idp
               | suc f => idp
             })
@@ -79,6 +79,7 @@
       )
   | cAndElim1 prf idp => \lam I m => \let rec => prfCorrectness prf I m \in rec.1
   | cAndElim2 prf idp => \lam I m => \let rec => prfCorrectness prf I m \in rec.2
+  | forAllIntro f prf idp => \lam I m u => prfCorrectness prf (extend I u) (⊧A.lifted m {?})
   \where {
     -- to work around termintation checking
 

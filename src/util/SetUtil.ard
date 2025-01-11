@@ -90,6 +90,9 @@
        })
   )
 
+\func mapSet {X Y : \Set} (S : Set X) (f : X -> Y) : Set Y
+  => \lam y => ∃ (x : X) (x ∈ S) (y = f x)
+
 \module SubsetHelper \where {
   \func subsetAdd {X : \Set} {x : X} {S S' : Set X} (h : S ⊆ S') : add S x ⊆ add S' x => \case \elim __ \with {
     | byLeft a => byLeft (h a)

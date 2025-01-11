@@ -1,0 +1,34 @@
+\import Function.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+\import syntax.Context
+\import syntax.Lift
+\import syntax.Substitution
+\import syntax.Syntax
+
+-- some renames can be reversed with a correct substitution
+-- TODO where else is this useful? More general?
+
+\func reverseRename {_ : Language} {c c' : Context} {f : Formula c}
+                    (r : Rename c c') (s : Substitution c' c)
+                    (reversesTerms : \Pi (t : Term c) -> Substitution.substituteTerm (Rename.renameTerm t r) s = t)
+  : Substitution.substitute (Rename.rename f r) s = f
+\elim f
+  | equal a b => pmap2 equal (reversesTerms a) (reversesTerms b)
+  | atomic r terms => pmap (atomic r) (ext $ ext (\lam j => reversesTerms (terms j)))
+  | notH f1 => pmap notH (reverseRename r s reversesTerms)
+  | impH a f1 => pmap2 impH (reverseRename r s reversesTerms) (reverseRename r s reversesTerms)
+  | cAnd a f1 => pmap2 cAnd (reverseRename r s reversesTerms) (reverseRename r s reversesTerms)
+  | forAllH f1 => pmap forAllH $ reverseRename _ _ (extendH reversesTerms)
+  | cExists f1 => pmap cExists $ reverseRename _ _ (extendH reversesTerms)
+  \where {
+    \private \func extendH {_ : Language} {c c' : Context} {r : Rename c c'} {s : Substitution c' c}
+                           (h : \Pi (t' : Term c) -> Substitution.substituteTerm (Rename.renameTerm t' r) s = t')
+                           (t : Term (suc c))
+      : Substitution.substituteTerm (Rename.renameTerm t (Extend.extend r)) (Extend.extends s) = t
+    \elim t
+      | var 0 => idp
+      | var (suc v) => pmap (liftTerm {_} {1}) $ h (var v)
+      | apply f args => pmap (apply f) $ ext $ ext $ (\lam j => extendH h (args j))
+  }

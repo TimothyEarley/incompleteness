@@ -6,6 +6,8 @@
 \import Paths
 \import Paths.Meta
 \import syntax.Context
+\import syntax.Free
+\import syntax.Lift
 \import syntax.Substitution
 \import syntax.Syntax
 \import util.SetUtil
@@ -59,35 +61,35 @@
                       {I : Interpretation c} {t : Term c} (h : extend I (evaluate I t) ⊧ f)
           : I ⊧ subst f t => substitutionLemma<-
             I {extend I (evaluate I t)} {substOne t}
-            (\lam v => cases v idp)
+            (\lam v _ => cases v idp)
             h
           \where {
             \func substitutionLemma<- {_ : Language} {c c' : Context} {f : Formula c}
                                       (I : Interpretation c') {I' : Interpretation c I.structure} {s : Substitution c c'}
               -- this makes sure I' is the interpretation we get when replacing I with terms from s
-                                      (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v))
+                                      (hI' : \Pi (v : variable c) (FreeInFormula f v) -> I'.variableValues v = evaluate I (s v))
                                       (h : I' ⊧ f)
               : I ⊧ substitute f s
             \elim f
-              | equal a b => evaluateSubstituteTerm I hI' *> h *> (inv $ evaluateSubstituteTerm I hI')
-              | atomic r terms => transport (rel r) (ext $ ext (\lam _ => inv (evaluateSubstituteTerm I hI'))) h
+              | equal a b => evaluateSubstituteTerm I (\lam v free => hI' v (byLeft free)) *> h *> (inv $ evaluateSubstituteTerm I (\lam v free => hI' v (byRight free)))
+              | atomic r terms => transport (rel r) (ext $ ext (\lam j => inv (evaluateSubstituteTerm I (\lam v free => hI' v (inP (j, free)))))) h
               | notH f1 => \lam m => h $ substitutionLemma-> I hI' m
-              | impH a f1 => \lam m => substitutionLemma<- I hI' $ h $ substitutionLemma-> I hI' m
-              | cAnd a b => (substitutionLemma<- I hI' h.1, substitutionLemma<- I hI' h.2)
+              | impH a f1 => \lam m => substitutionLemma<- I (\lam v free => hI' v (byRight free)) $ h $ substitutionLemma-> I (\lam v free => hI' v (byLeft free)) m
+              | cAnd a b => (substitutionLemma<- I (\lam v free => hI' v (byLeft free)) h.1, substitutionLemma<- I (\lam v free => hI' v (byRight free)) h.2)
               | forAllH f1 => \lam u => substitutionLemma<-
                   (extend I u)
-                  (\lam (v : variable (Context.inc c)) => \case \elim v \with {
-                    | 0 => unfold variableValues idp
-                    | suc v => unfold variableValues $ hI' v *> inv extendRenameOne
+                  (\lam (v : variable (Context.inc c)) free => \case \elim v, free \with {
+                    | 0, _ => unfold variableValues idp
+                    | suc v, free => unfold variableValues $ hI' v free *> inv extendRenameOne
                   })
                   (h u)
               | cExists f1 => \case \elim h \with {
                 | inP (u, h) => inP (u, substitutionLemma<-
                     {_} {Context.inc c} {Context.inc c'} {f1}
                     (extend I u) {extend I' u}
-                    (\lam (v : variable (Context.inc c)) => \case \elim v \with {
-                      | 0 => idp
-                      | suc v => hI' v *> inv extendRenameOne
+                    (\lam (v : variable (Context.inc c)) free => \case \elim v, free \with {
+                      | 0, _ => idp
+                      | suc v, free => hI' v free *> inv extendRenameOne
                     })
                     h
                 )
@@ -96,27 +98,27 @@
             \func substitutionLemma-> {_ : Language} {c c' : Context} {f : Formula c}
                                       (I : Interpretation c') {I' : Interpretation c I.structure} {s : variable c -> Term c'}
               -- this makes sure I' is the interpretation we get when replacing I with terms from s
-                                      (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v)) (h : I ⊧ substitute f s)
+                                      (hI' : \Pi (v : variable c) (FreeInFormula f v) -> I'.variableValues v = evaluate I (s v)) (h : I ⊧ substitute f s)
               : I' ⊧ f
             \elim f
-              | equal a b => (inv $ evaluateSubstituteTerm I hI') *> h *> evaluateSubstituteTerm I hI'
-              | atomic r terms => transport (rel r) (ext $ ext (\lam _ => evaluateSubstituteTerm I hI')) h
+              | equal a b => (inv $ evaluateSubstituteTerm I (\lam v free => hI' v (byLeft free))) *> h *> evaluateSubstituteTerm I (\lam v free => hI' v (byRight free))
+              | atomic r terms => transport (rel r) (ext $ ext (\lam j => evaluateSubstituteTerm I (\lam v free => hI' v (inP (j, free))))) h
               | notH f1 => \lam m => h $ substitutionLemma<- I hI' m
-              | impH a f1 => \lam m => substitutionLemma-> I hI' $ h $ substitutionLemma<- I hI' m
-              | cAnd a b => (substitutionLemma-> I hI' h.1, substitutionLemma-> I hI' h.2)
+              | impH a f1 => \lam m => substitutionLemma-> I (\lam v free => hI' v (byRight free)) $ h $ substitutionLemma<- I (\lam v free => hI' v (byLeft free)) m
+              | cAnd a b => (substitutionLemma-> I (\lam v free => hI' v (byLeft free)) h.1, substitutionLemma-> I (\lam v free => hI' v (byRight free)) h.2)
               | forAllH f1 => \lam u => substitutionLemma->
                   (extend I u)
-                  (\lam (v : variable (Context.inc c)) => \case \elim v \with {
-                    | 0 => unfold variableValues idp
-                    | suc v => unfold variableValues $ hI' v *> inv extendRenameOne
+                  (\lam (v : variable (Context.inc c)) free => \case \elim v, free \with {
+                    | 0, _ => unfold variableValues idp
+                    | suc v, free => unfold variableValues $ hI' v free *> inv extendRenameOne
                   })
                   (h u)
               | cExists f1 => \case \elim h \with {
                 | inP (u, h) => inP (u, substitutionLemma->
                     (extend I u) {extend I' u}
-                    (\lam (v : variable (Context.inc c)) => \case \elim v \with {
-                      | 0 => idp
-                      | suc v => hI' v *> inv extendRenameOne
+                    (\lam (v : variable (Context.inc c)) free => \case \elim v, free \with {
+                      | 0, _ => idp
+                      | suc v, free => hI' v free *> inv extendRenameOne
                     })
                     h
                 )
@@ -131,11 +133,29 @@
 
             \private \func evaluateSubstituteTerm {_ : Language} {c c' : Context} {x : Term c}
                                                   (I : Interpretation c') {I' : Interpretation c I.structure} {s : variable c -> Term c'}
-                                                  (hI' : \Pi (v : variable c) -> I'.variableValues v = evaluate I (s v))
+                                                  (hI' : \Pi (v : variable c) (FreeinTerm x v) -> I'.variableValues v = evaluate I (s v))
               : evaluate I (substituteTerm x s) = evaluate I' x
             \elim x
-              | var v => inv (hI' v)
-              | apply f1 args => pmap (fun f1) (ext $ ext (\lam j => evaluateSubstituteTerm {_} {c} {c'} {args j} I hI'))
+              | var v => inv (hI' v idp)
+              | apply f1 args => pmap (fun f1) (ext $ ext (\lam j => evaluateSubstituteTerm {_} {c} {c'} {args j} I (\lam v free => hI' v (inP (j, free)))))
+          }
+
+        -- TODO: show this without dummy?
+
+        \func lifted {_ : Language} {c : Context} {I : Interpretation c} {f : Formula c}
+                     {u : I.structure.Universe}
+                     (m : I ⊧ f) (dummy : Term c)
+          : extend I u ⊧ liftFormula {_} {1} f => fromSub.substitutionLemma->
+            {_}
+            {suc c} {c} {liftFormula {_} {1} f}
+            I {extend I u} {reverseLift.reverse1S dummy}
+            (\lam v free => \case \elim v, \elim free \with {
+              | 0, free => absurd $ notFreeInLift free
+              | suc f1, free => idp
+            })
+            (transportInv (I ⊧ __) (reverseLift dummy) m)
+          \where {
+
           }
       }
 
@@ -150,6 +170,13 @@
         \elim el
           | byLeft a => hPhi a
           | byRight idp => hphi
+
+        \func lifted {_ : Language} {c : Context} {I : Interpretation c} {Phi : Theory c}
+                     {u : I.structure.Universe}
+                     (m : I ⊧A Phi)
+                     (dummy : Term c)
+          : extend I u ⊧A liftTheory {_} {1} Phi =>
+          \lam {_} (inP (f, fPhi, idp)) => ⊧.lifted (m fPhi) dummy
       }
 
     \func implies \alias \infix 6 ⊧I {_ : Language} {c : Context} (Phi : Theory c) (phi : Formula c) =>

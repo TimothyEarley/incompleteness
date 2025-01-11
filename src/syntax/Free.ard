@@ -1,0 +1,64 @@
+\import Data.Fin
+\import Function.Meta
+\import Logic
+\import Logic.Meta
+\import Meta
+\import syntax.Context
+\import syntax.Lift
+\import syntax.Substitution
+\import syntax.Syntax
+\import util.NatUtil
+
+\func FreeinTerm {_ : Language} {c : Context} (t : Term c) (v : Context.variable c) : \Prop
+\elim t
+  | var v1 => v = v1
+  | apply f args => ∃ (j : Fin (funArity f)) (FreeinTerm (args j) v)
+
+\func FreeInFormula {_ : Language} {c : Context} (f : Formula c) (v : Context.variable c) : \Prop
+\elim f
+  | equal a b => FreeinTerm a v || FreeinTerm b v
+  | atomic r terms => ∃ (j : Fin (relArity r)) (FreeinTerm (terms j) v)
+  | notH f => FreeInFormula f v
+  | impH a f => FreeInFormula a v || FreeInFormula f v
+  | cAnd a f => FreeInFormula a v || FreeInFormula f v
+  | forAllH f => FreeInFormula f (suc v)
+  | cExists f => FreeInFormula f (suc v)
+
+\func notFreeInRenameTerm {_ : Language} {c c' : Context} {t : Term c} {r : Rename c c'}
+                          {v : Context.variable c'}
+                          (h' : \Pi (v' : Context.variable c) -> v /= r v')
+                          (h : FreeinTerm (Rename.renameTerm t r) v)
+  : Empty
+\elim t, h
+  | var v1, idp => h' v1 idp
+  | apply f args, inP (j, free) => notFreeInRenameTerm h' free
+
+\func notFreeInRename {_ : Language} {c c' : Context} {f : Formula c} {r : Rename c c'}
+                          {v : Context.variable c'}
+                          (h' : \Pi (v' : Context.variable c) -> v /= r v')
+                          (h : FreeInFormula (Rename.rename f r) v)
+  : Empty
+  \elim f, h
+    | equal a b, byLeft a1 => notFreeInRenameTerm h' a1
+    | equal a b, byRight b1 => notFreeInRenameTerm h' b1
+    | atomic r1 terms, inP (j, free) => notFreeInRenameTerm h' free
+    | notH f, h => notFreeInRename h' h
+    | impH a f, byLeft a1 => notFreeInRename h' a1
+    | impH a f, byRight b => notFreeInRename h' b
+    | cAnd a f, byLeft a1 => notFreeInRename h' a1
+    | cAnd a f, byRight b => notFreeInRename h' b
+    | forAllH f, h => notFreeInRename (\lam (v' : Fin (suc c)) p => \case \elim v', \elim p \with {
+      | 0, p => \let p' : suc v = 0 => p \in usingOnly p' contradiction
+      | suc v', p => h' v' (unfsuc p)
+    }) h
+    | cExists f, h => notFreeInRename (\lam (v' : Fin (suc c)) p => \case \elim v', \elim p \with {
+      | 0, p => \let p' : suc v = 0 => p \in usingOnly p' contradiction
+      | suc v', p => h' v' (unfsuc p)
+    }) h
+
+\func notFreeInLift {_ : Language} {c : Context} {f : Formula c}
+                      (h : FreeInFormula (liftFormula {_} {1} f) 0)
+  : Empty
+  => notFreeInRename
+      (\lam v' (p : 0 = {Fin (suc c)} suc v') => usingOnly p contradiction)
+      h
