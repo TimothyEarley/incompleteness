@@ -31,16 +31,16 @@
       | forAllH f => h $ NatSemiring.zero<suc
       | cExists f => h $ NatSemiring.zero<suc
 
-    \func stepNot {_ : Language} {c : Context} {f : Formula c}
-                  {fuel : Nat} (h : size (notH f) NatSemiring.<= suc fuel) : size f NatSemiring.<= fuel =>
+    \func stepOne {_ : Language} {c : Context} {f : Formula c}
+                  {fuel : Nat} (h : (suc $ size f) NatSemiring.<= suc fuel) : size f NatSemiring.<= fuel =>
       \lam x => h (NatSemiring.suc<suc x)
 
-    \func stepAnd1 {_ : Language} {c : Context} {f g : Formula c}
-                   {fuel : Nat} (h : size (cAnd f g) NatSemiring.<= fuel) : size f NatSemiring.<= fuel =>
+    \func stepBi1 {_ : Language} {c : Context} {f g : Formula c}
+                  {fuel : Nat} (h : (NatSemiring.∨ (size f) (size g)) NatSemiring.<= fuel) : size f NatSemiring.<= fuel =>
       NatSemiring.join-left NatSemiring.<=∘ h
 
-    \func stepAnd2 {_ : Language} {c : Context} {f g : Formula c}
-                   {fuel : Nat} (h : size (cAnd f g) NatSemiring.<= fuel) : size g NatSemiring.<= fuel =>
+    \func stepBi2 {_ : Language} {c : Context} {f g : Formula c}
+                  {fuel : Nat} (h : (NatSemiring.∨ (size f) (size g)) NatSemiring.<= fuel) : size g NatSemiring.<= fuel =>
       NatSemiring.join-right NatSemiring.<=∘ h
 
     \func stepSubstSuc {_ : Language} {c c' : Context} {f : Formula (suc c)} {s : Substitution (suc c) c'}

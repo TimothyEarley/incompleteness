@@ -23,3 +23,9 @@
     \lam (p, r) => (h.1 p, h'.1 r),
     \lam (q, s) => (h.2 q, h'.2 s)
   )
+
+\lemma <->fun {P Q R S : \Prop}
+              (h1 : P <-> R)
+              (h2 : Q <-> S)
+  : (P -> Q) <-> (R -> S) => (\lam h r => h2.1 $ h $ h1.2 r,
+                              \lam h p => h2.2 $ h $ h1.1 p)

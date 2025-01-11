@@ -3,11 +3,9 @@
 \import Function.Meta
 \import Logic
 \import Logic.Meta
-\import Meta
-\import Relation.Equivalence
 \import proof.ContainsWitnesses
 \import proof.NegationComplete
-\import proof.PrfCorrect
+\import proof.PrfWeaken
 \import proof.Proof
 \import proof.TermInterpretation
 \import semantics.Interpretation
@@ -16,7 +14,6 @@
 \import syntax.Substitution
 \import syntax.Syntax
 \import util.LogicUtil
-\import util.NatUtil
 \open Interpretation (⊧)
 
 \lemma henkin {_ : Language} {c : Context} {T : Theory c}
@@ -37,11 +34,13 @@
     \elim f, fuel
       | equal a b, _ => <->sym TermInterpretation.isModelForEqual
       | atomic r terms, _ => <->sym TermInterpretation.isModelForAtomic
-      | notH f, suc fuel => <->notH con neg <->* <->not (henkinHelper con neg wit f fuel (size.stepNot fuelLargerThanSize))
-      | impH a f, _ => {?}
+      | notH f, suc fuel => <->notH con neg <->* <->not (henkinHelper con neg wit f fuel (size.stepOne fuelLargerThanSize))
+      | impH a f, fuel => <->impH neg <->* <->fun
+                                               (henkinHelper con neg wit a fuel (size.stepBi1 fuelLargerThanSize))
+                                               (henkinHelper con neg wit f fuel (size.stepBi2 fuelLargerThanSize))
       | cAnd a b, fuel => <->cAnd <->* <->sigma
-                                               (henkinHelper con neg wit a fuel (size.stepAnd1 fuelLargerThanSize))
-                                               (henkinHelper con neg wit b fuel (size.stepAnd2 fuelLargerThanSize))
+                                               (henkinHelper con neg wit a fuel (size.stepBi1 fuelLargerThanSize))
+                                               (henkinHelper con neg wit b fuel (size.stepBi2 fuelLargerThanSize))
       | forAllH f, _ => {?}
       | cExists f, suc fuel =>
         \let
@@ -68,6 +67,19 @@
         | byRight h => inP h
       }
     )
+
+    \lemma <->impH {_ : Language} {c : Context} {T : Theory c} {f g : Formula c}
+      (neg : NegationComplete T)
+      : Prf' T (impH f g) <-> (Prf' T f -> Prf' T g)
+      => (
+        \lam (inP prf) (inP prfF) => inP $ modusPonens f prfF prf,
+        \lam h => \case neg f \with {
+          | byLeft prfF => \case h (inP prfF) \with {
+            | inP prfG => inP $ introImp (prfWeaken prfG (byLeft __)) idp
+          }
+          | byRight prfNotF => inP $ introImp (contra f (prfWeaken prfNotF (byLeft __)) (AXM (byRight idp))) idp
+        }
+      )
 
     \lemma <->cAnd {_ : Language} {c : Context} {T : Theory c} {f g : Formula c}
       : Prf' T (cAnd f g) <-> (\Sigma (Prf' T f) (Prf' T g)) =>
