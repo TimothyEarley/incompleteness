@@ -1,15 +1,22 @@
+\import Arith.Nat
 \import Consistent
 \import Function.Meta
 \import Logic
+\import Logic.Meta
+\import Meta
 \import Relation.Equivalence
 \import proof.ContainsWitnesses
 \import proof.NegationComplete
+\import proof.PrfCorrect
 \import proof.Proof
 \import proof.TermInterpretation
 \import semantics.Interpretation
 \import syntax.Context
+\import syntax.SIze
+\import syntax.Substitution
 \import syntax.Syntax
 \import util.LogicUtil
+\import util.NatUtil
 \open Interpretation (⊧)
 
 \lemma henkin {_ : Language} {c : Context} {T : Theory c}
@@ -17,23 +24,41 @@
               (neg : NegationComplete T)
               (wit : ContainsWitness T)
               (f : Formula c)
-  : Prf' T f <-> (TermInterpretation T) ⊧ f
-\elim f
-  | equal a b => <->sym TermInterpretation.isModelForEqual
-  | atomic r terms => <->sym TermInterpretation.isModelForAtomic
-  | notH f => <->notH con neg <->* <->not (henkin con neg wit f)
-  | impH a f => {?}
-  | cAnd a b => <->cAnd <->* <->sigma (henkin con neg wit a) (henkin con neg wit b)
-  | forAllH f => {?}
-  | cExists f => (
-    -- Prf to model
-    \case \elim __, wit f \with {
-      | inP p, inP (t, h) => inP (in~ t, {?})
-    },
-    -- Model to Prf
-    {?}
-  )
+  : Prf' T f <-> (TermInterpretation T) ⊧ f =>
+  henkinHelper con neg wit f (size f) NatSemiring.<=-refl
   \where {
+    \private \lemma henkinHelper {_ : Language} {c : Context} {T : Theory c}
+                                 (con : Consistent T)
+                                 (neg : NegationComplete T)
+                                 (wit : ContainsWitness T)
+                                 (f : Formula c)
+                                 (fuel : Nat) (fuelLargerThanSize : size f NatSemiring.<= fuel)
+      : Prf' T f <-> (TermInterpretation T) ⊧ f
+    \elim f, fuel
+      | equal a b, _ => <->sym TermInterpretation.isModelForEqual
+      | atomic r terms, _ => <->sym TermInterpretation.isModelForAtomic
+      | notH f, suc fuel => <->notH con neg <->* <->not (henkinHelper con neg wit f fuel (size.stepNot fuelLargerThanSize))
+      | impH a f, _ => {?}
+      | cAnd a b, fuel => <->cAnd <->* <->sigma
+                                               (henkinHelper con neg wit a fuel (size.stepAnd1 fuelLargerThanSize))
+                                               (henkinHelper con neg wit b fuel (size.stepAnd2 fuelLargerThanSize))
+      | forAllH f, _ => {?}
+      | cExists f, suc fuel =>
+        \let
+          | A => TruncP (\Sigma (t : Term c) (Prf T (Substitution.subst f t)))
+          | B => TruncP (\Sigma (t : Term c) (TermInterpretation T ⊧ Substitution.subst f t))
+          | C => TruncP (\Sigma (u : Universe {structure {TermInterpretation T}}) (Interpretation.extend (TermInterpretation T) u ⊧ f))
+          | tModel : B <-> C => <->sym $ TermInterpretation.isModelForExists {_} {c} {T} {f}
+          | goal : A <-> B => (
+            \lam (inP (t, prf)) => inP (t, (henkinHelper con neg wit (Substitution.subst f t) fuel (size.stepSubstSuc fuelLargerThanSize)).1 (inP prf)),
+            \lam (inP (t, model)) => TruncP.map ((henkinHelper con neg wit (Substitution.subst f t) fuel (size.stepSubstSuc fuelLargerThanSize)).2 model) (t, __)
+          )
+        \in
+          <->cExists wit <->* goal <->* tModel
+
+      -- the impossible cases there to aide termination
+      | f, 0 => absurd (size.not<=0 fuelLargerThanSize)
+
     \lemma <->notH {_ : Language} {c : Context} {T : Theory c} (con : Consistent T) (neg : NegationComplete T)
                    {f : Formula c}
       : Prf' T (notH f) <-> Not (Prf' T f) => (
@@ -50,4 +75,13 @@
         \lam (inP h) => (inP (cAndElim1 h idp), inP (cAndElim2 h idp)),
         \lam (inP prf1, inP prf2) => inP (and prf1 prf2 idp)
       )
+
+    \lemma <->cExists {_ : Language} {c : Context} {T : Theory c} {f : Formula (suc c)} (wit : ContainsWitness T)
+      : Prf' T (cExists f) <-> ∃ (t : Term c) (Prf T (Substitution.subst f t)) => (
+      \case \elim __, wit f \with {
+        | inP p, inP (t, h) => inP (t, Prf.modusPonens _ p h)
+      },
+      \case \elim __ \with {
+        | inP (t, p) => inP $ cExistsIntro t p idp
+      })
   }

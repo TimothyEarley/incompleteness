@@ -1,0 +1,62 @@
+\import Algebra.Meta
+\import Arith.Nat
+\import Function.Meta
+\import Logic
+\import Meta
+\import Paths
+\import Paths.Meta
+\import syntax.Context
+\import syntax.Substitution
+\import syntax.Syntax
+-- helper for recursion, where normal structural recursion does not work
+
+\func size {_ : Language} {c : Context} (f : Formula c) : Nat \elim f
+  | equal a b => 1
+  | atomic r terms => 1
+  | notH f => suc (size f)
+  | impH a f => NatSemiring.∨ (size a) (size f)
+  | cAnd a f => NatSemiring.∨ (size a) (size f)
+  | forAllH f => suc (size f)
+  | cExists f => suc (size f)
+
+  \where {
+    \func not<=0 {_ : Language} {c : Context} {f : Formula c}
+                 (h : size f NatSemiring.<= 0) : Empty
+    \elim f
+      | equal a b => h NatSemiring.zero<suc
+      | atomic r terms => h NatSemiring.zero<suc
+      | notH f => h $ NatSemiring.zero<suc
+      | impH a f => not<=0 {_} {c} {a} (NatSemiring.join-left NatSemiring.<=∘ h)
+      | cAnd a f => not<=0 {_} {c} {a} (NatSemiring.join-left NatSemiring.<=∘ h)
+      | forAllH f => h $ NatSemiring.zero<suc
+      | cExists f => h $ NatSemiring.zero<suc
+
+    \func stepNot {_ : Language} {c : Context} {f : Formula c}
+                  {fuel : Nat} (h : size (notH f) NatSemiring.<= suc fuel) : size f NatSemiring.<= fuel =>
+      \lam x => h (NatSemiring.suc<suc x)
+
+    \func stepAnd1 {_ : Language} {c : Context} {f g : Formula c}
+                   {fuel : Nat} (h : size (cAnd f g) NatSemiring.<= fuel) : size f NatSemiring.<= fuel =>
+      NatSemiring.join-left NatSemiring.<=∘ h
+
+    \func stepAnd2 {_ : Language} {c : Context} {f g : Formula c}
+                   {fuel : Nat} (h : size (cAnd f g) NatSemiring.<= fuel) : size g NatSemiring.<= fuel =>
+      NatSemiring.join-right NatSemiring.<=∘ h
+
+    \func stepSubstSuc {_ : Language} {c c' : Context} {f : Formula (suc c)} {s : Substitution (suc c) c'}
+                       {fuel : Nat}
+                       (h : suc (size f) NatSemiring.<= suc fuel) : size (Substitution.substitute f s) NatSemiring.<= fuel =>
+      rewriteI substPreservesSize (\lam x => h (NatSemiring.suc<suc x))
+
+    -- this is the important property we want
+    \func substPreservesSize {_ : Language} {c c' : Context} {f : Formula c} {s : Substitution c c'}
+      : size f = size (Substitution.substitute f s)
+    \elim f
+      | equal a b => idp
+      | atomic r terms => idp
+      | notH f => pmap suc substPreservesSize
+      | impH f g => pmap2 (NatSemiring.∨) substPreservesSize substPreservesSize
+      | cAnd f g => pmap2 (NatSemiring.∨) substPreservesSize substPreservesSize
+      | forAllH f => pmap suc substPreservesSize
+      | cExists f => pmap suc substPreservesSize
+  }
