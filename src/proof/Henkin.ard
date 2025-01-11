@@ -39,8 +39,8 @@
                                                (henkinHelper con neg wit a fuel (size.stepBi1 fuelLargerThanSize))
                                                (henkinHelper con neg wit f fuel (size.stepBi2 fuelLargerThanSize))
       | cAnd a b, fuel => <->cAnd <->* <->sigma
-                                               (henkinHelper con neg wit a fuel (size.stepBi1 fuelLargerThanSize))
-                                               (henkinHelper con neg wit b fuel (size.stepBi2 fuelLargerThanSize))
+                                           (henkinHelper con neg wit a fuel (size.stepBi1 fuelLargerThanSize))
+                                           (henkinHelper con neg wit b fuel (size.stepBi2 fuelLargerThanSize))
       | forAllH f, _ => {?}
       | cExists f, suc fuel =>
         \let
@@ -69,17 +69,16 @@
     )
 
     \lemma <->impH {_ : Language} {c : Context} {T : Theory c} {f g : Formula c}
-      (neg : NegationComplete T)
-      : Prf' T (impH f g) <-> (Prf' T f -> Prf' T g)
-      => (
-        \lam (inP prf) (inP prfF) => inP $ modusPonens f prfF prf,
-        \lam h => \case neg f \with {
-          | byLeft prfF => \case h (inP prfF) \with {
-            | inP prfG => inP $ introImp (prfWeaken prfG (byLeft __)) idp
-          }
-          | byRight prfNotF => inP $ introImp (contra f (prfWeaken prfNotF (byLeft __)) (AXM (byRight idp))) idp
+                   (neg : NegationComplete T)
+      : Prf' T (impH f g) <-> (Prf' T f -> Prf' T g) => (
+      \lam (inP prf) (inP prfF) => inP $ modusPonens f prfF prf,
+      \lam h => \case neg f \with {
+        | byLeft prfF => \case h (inP prfF) \with {
+          | inP prfG => inP $ introImp (prfWeaken prfG (byLeft __)) idp
         }
-      )
+        | byRight prfNotF => inP $ introImp (contra f (prfWeaken prfNotF (byLeft __)) (AXM (byRight idp))) idp
+      }
+    )
 
     \lemma <->cAnd {_ : Language} {c : Context} {T : Theory c} {f g : Formula c}
       : Prf' T (cAnd f g) <-> (\Sigma (Prf' T f) (Prf' T g)) =>
@@ -96,4 +95,10 @@
       \case \elim __ \with {
         | inP (t, p) => inP $ cExistsIntro t p idp
       })
+
+    \lemma <->forAll {_ : Language} {c : Context} {T : Theory c} {f : Formula (suc c)}
+      : Prf' T (forAllH f) <-> ∀ (t : Term c) (Prf' T ( Substitution . subst f t)) => (
+      \lam (inP p) t => inP $ forAllElim f p t (AXM (byRight idp)),
+      \lam h => {?}
+    )
   }

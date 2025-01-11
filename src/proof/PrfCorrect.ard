@@ -26,9 +26,11 @@
       \in h2' $ mImp $ h1'
   | notFalse idp => \lam _ _ mH => mH (\lam _ => idp)
   | notEqual h idp => \lam I _ evalEqual => h I evalEqual
-  | forAllElim fa e t prf => \lam I mAxioms =>
+  | forAllElim fa prfAll t prf => \lam I mAxioms =>
       \let
-        | goal : I ⊧ Substitution.subst fa t => ⊧.fromSub (mAxioms e (evaluate I t))
+        | goal : I ⊧ Substitution.subst fa t =>
+          \let rec => prfCorrectness prfAll I mAxioms
+          \in ⊧.fromSub (rec (evaluate I t))
       \in prfCorrectness prf I (⊧A.fromAdd mAxioms goal)
   | notEqualSymm prf idp => \lam I mAxioms p => prfCorrectness prf I mAxioms (inv p)
   | notHFromimpH f' prf prf1 idp => \lam I mAxioms mF => prfCorrectness prf I mAxioms (prfCorrectness prf1 I mAxioms mF)

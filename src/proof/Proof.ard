@@ -14,7 +14,7 @@
   -- | PC (psi : Formula c) (Prf (add axioms psi) toShow) (Prf (add axioms (notH psi)) toShow)
   -- | Ctr (psi : Formula c) (Prf (add axioms (notH toShow)) psi) (Prf (add axioms (notH toShow)) (notH psi))
   | contra (f : Formula c) (Prf axioms (notH f)) (Prf axioms f)
-  | forAllElim (f : Formula (suc c)) (forAllH f ∈ axioms) (t : Term c) (Prf (add axioms (Substitution.subst f t)) toShow)
+  | forAllElim (f : Formula (suc c)) (Prf axioms (forAllH f)) (t : Term c) (Prf (add axioms (Substitution.subst f t)) toShow)
 
   | sub
     (f : Formula (Context.inc c))

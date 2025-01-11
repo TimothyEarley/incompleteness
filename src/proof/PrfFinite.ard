@@ -27,17 +27,24 @@
       FinSets.FinUnion h1.3 h2.3,
       contra f (prfWeaken h1.4 (\lam h => byLeft h)) (prfWeaken h2.4 (\lam h => byRight h))
     )
-  | forAllElim f e t prf =>
+  | forAllElim f prfAll t prf =>
     \let
+      | h' => prfFinite prfAll
       | h => prfFinite prf
       -- h.1 could have (subst f t) in it. Thats needs to be removed
+      | axiomsH => delete h.1 (Substitution.subst f t)
+      | axiomsHSub : axiomsH ⊆ axioms => \lam (e1, e2) => \case h.2 e1 \with {
+        | byLeft a => a
+        | byRight b => absurd $ e2 b
+      }
+      | axiomsHFin : FinSet (Elements axiomsH) => FinSets.FinWithout h.3 (decideEq _)
     \in (
-      add (delete h.1 (Substitution.subst f t)) (forAllH f),
-      SubsetHelper.subsetUnion (SubsetHelper.subsetDelete h.2) (\lam p => transport axioms p e),
-      FinSets.FinUnion (FinSets.FinWithout h.3 (decideEq _)) FinSets.FinSingle,
-      forAllElim f (byRight idp) t (prfWeaken h.4 (\lam {f'} hf' => \case decideEq (Substitution.subst f t) f' \with {
-        | yes d => byRight d
-        | no d => byLeft (byLeft (hf', d))
+      h'.1 ∪ axiomsH,
+      SubsetHelper.subsetUnion h'.2 axiomsHSub,
+      FinSets.FinUnion h'.3 axiomsHFin,
+      forAllElim f (prfWeaken h'.4 (byLeft __)) t (prfWeaken h.4 (\lam {f'} e => \case decideEq (Substitution.subst f t) f' \with {
+        | yes p => byRight p
+        | no n => byLeft (byRight (e, n))
       }))
     )
   | introImp {a} prf p =>

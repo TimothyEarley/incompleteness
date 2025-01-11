@@ -16,7 +16,7 @@
   | notImp h1 h2 p => notImp (prfWeaken h1 sub) (prfWeaken h2 sub) p
   | notFalse idp => notFalse idp
   | notEqual h p => notEqual h p
-  | forAllElim fa e t prf => forAllElim fa (sub e) t (prfWeaken prf (SubsetHelper.subsetAdd sub))
+  | forAllElim fa prfAll t prf => forAllElim fa (prfWeaken prfAll sub) t (prfWeaken prf (SubsetHelper.subsetAdd sub))
   | notEqualSymm prf p => notEqualSymm (prfWeaken prf sub) p
   | notHFromimpH f' prf prf1 p => notHFromimpH f' (prfWeaken prf sub) (prfWeaken prf1 sub) p
   | sub f t t' prf1 prf2 idp => Prf.sub f t t' (prfWeaken prf1 sub) (prfWeaken prf2 sub) idp

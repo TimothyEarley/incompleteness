@@ -77,9 +77,9 @@
 \func prfNotEqualNumbers {a b : Term 0} (ha : isSimpleNumber a) (hb : isSimpleNumber b) (h : Not (a = b)) : Prf NN (notH (equal a b))
 \elim a, b, ha, hb, h
   | apply LNN.Zero nil, apply LNN.Succ (b :: nil), ha, hb, h =>
-    forAllElim _ (inP (0, idp)) b (notEqualSymm (AXM (byRight idp)) idp)
+    forAllElim _ (AXM $ inP (0, idp)) b (notEqualSymm (AXM (byRight idp)) idp)
   | apply LNN.Succ (a :: nil), apply LNN.Zero nil, ha, hb, h =>
-    forAllElim _ (inP (0, idp)) a (AXM (byRight idp))
+    forAllElim _ (AXM $ inP (0, idp)) a (AXM (byRight idp))
   | apply LNN.Zero nil, apply LNN.Zero nil, ha, hb, h => contradiction
   | apply LNN.Succ (a :: nil), apply LNN.Succ (b :: nil), ha, hb, h =>
     \let
@@ -97,8 +97,8 @@
       : Prf NN (notH (equal (Succ a) (Succ b))) =>
       \let
         | instance : Prf NN (impH (equal (Succ a) (Succ b)) (equal a b)) => run {
-          forAllElim (forAllH $ impH (equal (Succ #1) (Succ #0)) (equal #1 #0)) (inP (1, idp)) a,
-          forAllElim (impH (equal (Succ $ liftTerm a) (Succ #0)) (equal (liftTerm a) #0)) (byRight idp) b,
+          forAllElim (forAllH $ impH (equal (Succ #1) (Succ #0)) (equal #1 #0)) (AXM $ inP (1, idp)) a,
+          forAllElim (impH (equal (Succ $ liftTerm a) (Succ #0)) (equal (liftTerm a) #0)) (AXM $ byRight idp) b,
           AXM (run {
             byRight,
             unfold Substitution.subst,
