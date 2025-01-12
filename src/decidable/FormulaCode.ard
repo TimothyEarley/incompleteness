@@ -14,18 +14,18 @@
   | code-encode => formulaCode-encode
   | code-decode => formulaCode-decode
   | decideCode => formulaCode-decide
-\where {
-  \func FormulaCode {_ : Language} {c : Context} (a b : Formula c) : \Prop \elim a, b
-    | equal a b, equal a1 b1 => \Sigma (a = a1) (b = b1)
-    | atomic r terms, atomic r1 terms1 => \Sigma (r = r1) (terms = {Array (Term c)} terms1)
-    | notH a, notH b => FormulaCode a b
-    | impH a a1, impH b b1 => \Sigma (FormulaCode a b) (FormulaCode a1 b1)
-    | cAnd a a1, cAnd b b1 => \Sigma (FormulaCode a b) (FormulaCode a1 b1)
-    | forAllH a, forAllH b => FormulaCode a b
-    | cExists a, cExists b => FormulaCode a b
-    | _, _ => Empty
+  \where {
+    \func FormulaCode {_ : Language} {c : Context} (a b : Formula c) : \Prop \elim a, b
+      | equal a b, equal a1 b1 => \Sigma (a = a1) (b = b1)
+      | atomic r terms, atomic r1 terms1 => \Sigma (r = r1) (terms = {Array (Term c)} terms1)
+      | notH a, notH b => FormulaCode a b
+      | impH a a1, impH b b1 => \Sigma (FormulaCode a b) (FormulaCode a1 b1)
+      | cAnd a a1, cAnd b b1 => \Sigma (FormulaCode a b) (FormulaCode a1 b1)
+      | forAllH a, forAllH b => FormulaCode a b
+      | cExists a, cExists b => FormulaCode a b
+      | _, _ => Empty
 
-  \func formulaCode-encode {_ : Language} {c : Context} {a b : Formula c} (p : a = b) : FormulaCode a b
+    \func formulaCode-encode {_ : Language} {c : Context} {a b : Formula c} (p : a = b) : FormulaCode a b
     \elim a, b, p
       | equal a b, _, idp => (idp, idp)
       | atomic r terms, _, idp => (idp, idp)
@@ -35,7 +35,7 @@
       | forAllH a1, _, idp => formulaCode-encode idp
       | cExists a, _, idp => formulaCode-encode idp
 
-  \func formulaCode-decode {_ : Language} {c : Context} {a b : Formula c} (code : FormulaCode a b) : a = b
+    \func formulaCode-decode {_ : Language} {c : Context} {a b : Formula c} (code : FormulaCode a b) : a = b
     \elim a, b, code
       | equal a b1, equal a1 b, (p,p1) => pmap2 equal p p1
       | atomic r terms, atomic _ terms1, (idp,p1) => pmap (atomic r) (convertArrayEquality p1)
@@ -45,7 +45,7 @@
       | forAllH a, forAllH b, code => pmap forAllH $ formulaCode-decode code
       | cExists a, cExists b, code => pmap cExists $ formulaCode-decode code
 
-  \func formulaCode-decide {L : DecLanguage} {c : Context} (a b : Formula c) : Dec (FormulaCode a b)
+    \func formulaCode-decide {L : DecLanguage} {c : Context} (a b : Formula c) : Dec (FormulaCode a b)
     \elim a, b
       | equal a b, equal a1 b1 => \case TermCodeDec.decideEq a a1, TermCodeDec.decideEq b b1 \with {
         | yes e, yes e1 => yes (e, e1)

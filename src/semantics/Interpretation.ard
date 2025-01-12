@@ -145,9 +145,9 @@
         \func lifted {_ : Language} {c : Context} {I : Interpretation c} {f : Formula c}
                      {u : I.structure.Universe}
                      (m : I ⊧ f) (dummy : Term c)
-          : extend I u ⊧ liftFormula {_} {1} f => fromSub.substitutionLemma->
+          : extend I u ⊧ liftFormula 1 f => fromSub.substitutionLemma->
             {_}
-            {suc c} {c} {liftFormula {_} {1} f}
+            {suc c} {c} {liftFormula 1 f}
             I {extend I u} {reverseLift.reverse1S dummy}
             (\lam v free => \case \elim v, \elim free \with {
               | 0, free => absurd $ notFreeInLift free

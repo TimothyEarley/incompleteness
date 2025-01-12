@@ -1,9 +1,11 @@
 \import Data.Fin
 \import Function.Meta
+\import Logic
 \import Meta
 \import Paths
 \import Paths.Meta
 \import syntax.Context
+\import syntax.Free
 \import syntax.Substitution
 \import syntax.SubstitutionReverse
 \import syntax.Syntax
@@ -25,6 +27,11 @@
     \elim delta
       | 0 => idp
       | suc delta => pmap suc isActuallyJustAddition
+
+    \func unliftFinPath {delta n : Nat} {i j : Fin n} (p : liftFin i = {Fin (delta + n)} liftFin j) : i = j
+    \elim delta
+      | 0 => p
+      | suc delta => \let p' => unfsuc p \in unliftFinPath p'
   }
 
 \func liftTerm {_ : Language} {delta c : Context} (t : Term c) : Term (delta + c) =>
@@ -40,17 +47,29 @@
       unfold liftTerm Rename.renameTerm.compose
   }
 
-\func liftFormula {_ : Language} {delta c : Context} (f : Formula c) : Formula (delta + c) =>
+\func liftFormula {_ : Language} (delta : Context) {c : Context} (f : Formula c) : Formula (delta + c) =>
   Rename.rename f (\lam v => liftFin v)
   \where {
     \private \func example {_ : Language} :
-      liftFormula {_} {2} (forAllH $ forAllH (equal #0 #1)) = {Formula 5}
+      liftFormula 2 (forAllH $ forAllH (equal #0 #1)) = {Formula 5}
       (forAllH $ forAllH $ equal #0 #1) => idp
+
+    \func unliftFormula1 {_ : Language} {c : Context}
+                        (f : Formula (suc c))
+                        (h : Not (FreeInFormula f 0))
+      : Formula c
+      => Rename.renameFree f (\lam (v : Fin (suc c)) free => \case \elim v, \elim free \with {
+        | 0, free => absurd $ h free
+        | suc v, _ => v
+      })
+
+    \func unliftPath {_ : Language} (delta : Context) {c : Context} {f f' : Formula c} (p : liftFormula delta f = liftFormula delta f')
+      : f = f' => Rename.unrename liftFin.unliftFinPath p
   }
 
 \func reverseLift {_ : Language} {c : Context} {f : Formula c} (dummy : Term c)
-  : Substitution.substitute (liftFormula {_} {1} f) (reverse1S dummy) = f =>
-  reverseRename (\lam v => liftFin {1} v) (reverse1S dummy) (\lam t => reverseTerm)
+  : Substitution.substitute (liftFormula 1 f) (reverse1S dummy) = f =>
+  reverseRename (\lam v => liftFin {1} v) (reverse1S dummy) (\lam _ => reverseTerm)
   \where {
     \func reverse1S {_ : Language} {c : Context} (dummy : Term c) : Substitution (suc c) c =>
       \lam v => \case \elim v \with {
@@ -65,7 +84,7 @@
       | apply f args => pmap (apply f) (ext $ ext (\lam j => reverseTerm {_} {c} {args j}))
   }
 
-\func liftTheory {_ : Language} {delta c : Context} (T : Theory c) : Theory (delta + c) => mapSet T liftFormula
+\func liftTheory {_ : Language} {delta c : Context} (T : Theory c) : Theory (delta + c) => mapSet T (\lam f _ => liftFormula delta f)
 
 \func subsituteLiftTerm1S {_ : Language} {c c' : Context} {t : Term c} {s : Substitution (suc c) c'}
   : Substitution.substituteTerm (liftTerm {_} {1} t) s = Substitution.substituteTerm t (\lam v => s (fsuc v))

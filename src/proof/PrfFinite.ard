@@ -1,6 +1,7 @@
 \import Function.Meta
 \import Logic
 \import Paths
+\import Paths.Meta
 \import Set
 \import Set.Fin
 \import Set.Subset
@@ -9,12 +10,19 @@
 \import proof.PrfWeaken
 \import proof.Proof
 \import syntax.Context
+\import syntax.Free
+\import syntax.Lift
 \import syntax.Substitution
 \import syntax.Syntax
 \import util.SetUtil
 
 \func prfFinite {_ : DecLanguage} {c : Context} {axioms : Theory c} {toShow : Formula c}
-                (prf : Prf axioms toShow) : \Sigma (axioms' : Theory c) (axioms' ⊆ axioms) (FinSet (Elements axioms')) (Prf axioms' toShow)
+                (prf : Prf axioms toShow) :
+  \Sigma
+    (axioms' : Theory c)
+    (axioms' ⊆ axioms)
+    (FinSet (Elements axioms'))
+    (Prf axioms' toShow)
 \elim prf
   | AXM e => (single toShow, SubsetHelper.subsetSingle e, FinSets.FinSingle, AXM idp)
   | contra f prf1 prf2 =>
@@ -163,3 +171,27 @@
     \let
       | h => prfFinite prf
     \in (h.1, h.2, h.3, cAndElim2 h.4 p)
+  | forAllIntro f prf p =>
+    \let
+      | h => prfFinite prf
+      | h3 : FinSet (Elements h.1) => h.3
+      --       | ourSet : Set (Formula c) => mapSet' h.1 (liftFormula 1)
+      | zeroNotFreeInH1 : 0 ∉ {Fin (suc c)} freeVars h.1 => \case \elim __ \with {
+        | inP (f, e, free) => \case h.2 e \with {
+          | inP (f', e', p') => notFreeInLift $ rewriteI p' $ free
+        }
+      }
+      | ourSet : Set (Formula c) => mapSet h.1 (\lam x xe => liftFormula.unliftFormula1 x (\lam free => zeroNotFreeInH1 (inP (x, xe, free))))
+    \in (
+      ourSet,
+    --       \lam e => \case h.2 e \with {
+    --         | inP (x', e', p') => \let z => liftFormula.unliftPath 1 p' \in rewrite z e'
+    --       },
+      \lam {x} => \case \elim x, \elim __ \with {
+        | _, inP (f, e, idp) => \case h.2 {f} e \with {
+          | inP (f', e', p') => \let p'' => p' \in {?}
+        }
+      },
+      {?},
+      forAllIntro f {?} p
+    )

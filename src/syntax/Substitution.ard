@@ -1,12 +1,18 @@
 \import Data.Fin
 \import Function
 \import Function.Meta
+\import Logic
+\import Logic.Meta
 \import Meta
 \import Paths
 \import Paths.Meta
+\import decidable.FormulaCode
+\import decidable.TermCode
 \import syntax.Context
+\import syntax.Free
 \import syntax.Lift
 \import syntax.Syntax
+\import util.ArrayUtil
 \open Context
 \open Nat (+)
 
@@ -52,6 +58,11 @@
           | apply f args => pmap (apply f) $ ext $ ext (\lam j => compose {_} {c} {c'} {c''} {args j})
       }
 
+    \func renameTermFree {_ : Language} {c c' : Context} (t : Term c) (remap : RenameFreeTerm c c' t) : Term c'
+      \elim t
+        | var v => var $ remap v idp
+        | apply f args => apply f (\lam i => renameTermFree (args i) (\lam v free => remap v (inP (i, free))))
+
     \func rename {_ : Language} {c c' : Context} (f : Formula c) (r : Rename c c') : Formula c'
     \elim f
       | equal a b => equal (renameTerm a r) (renameTerm b r)
@@ -61,6 +72,79 @@
       | cAnd a b => cAnd (rename a r) (rename b r)
       | forAllH f => forAllH $ rename f (Extend.extend r)
       | cExists f => cExists $ rename f (Extend.extend r)
+
+    -- same as above but we additionally guarantee r is only applied on the free vars
+    \func renameFree {_ : Language} {c c' : Context} (f : Formula c) (r : RenameFree c c' f) : Formula c'
+      \elim f
+        | equal a b => equal (renameTermFree a (\lam v free => r v (byLeft free))) (renameTermFree b (\lam v free => r v (byRight free)))
+        | atomic rel terms => atomic rel $ \lam i => renameTermFree (terms i) {?}
+        | notH f => notH $ renameFree f r
+        | impH antecedent consequent => impH (renameFree antecedent r) (renameFree consequent r)
+        | cAnd a b => cAnd (renameFree a r) (renameFree b r)
+        | forAllH f => forAllH $ renameFree f (Extend.extend r)
+        | cExists f => cExists $ renameFree f (Extend.extend r)
+
+    \func unrenameTerm {_ : Language} {c c' : Context} {t t' : Term c} {r : Rename c c'}
+                       (rInj : \Pi {v v' : variable c} (r v = r v') -> v = v')
+                       (p : renameTerm t r = renameTerm t' r) : t = t'
+    \elim t, t', p
+      | var v, var v1, p => \let p' => TermCodeDec.termCode-encode p \in pmap var $ rInj p'
+      | apply f args, apply f1 args1, p =>
+        \let
+          | (p1, p2) => TermCodeDec.termCode-encode p
+        \in \case \elim f1, \elim args1, p1, p2 \with {
+          | _, args1, idp, p2 => pmap
+              (apply f)
+              (ext $ ext (\lam j => \let p2' => convertArrayEquality p2 | p2Result => pmap (\lam (z : Array _ _) => z j) p2' \in unrenameTerm rInj p2Result))
+        }
+
+    \func unrename {_ : Language} {c c' : Context} {f f' : Formula c} {r : Rename c c'}
+                   (rInj : \Pi {v v' : variable c} (r v = r v') -> v = v')
+                   (p : rename f r = rename f' r) : f = f'
+    \elim f, f', p
+      | equal a b, equal a1 b1, p => \let (p1, p2) => FormulaCodeDec.formulaCode-encode p \in
+        pmap2 equal (unrenameTerm rInj p1) (unrenameTerm rInj p2)
+      | atomic r1 terms, atomic r2 terms1, p =>
+        \let
+          | (p1, p2) => FormulaCodeDec.formulaCode-encode p
+        \in \case \elim r2, \elim terms1, p1, p2 \with {
+          | _, _, idp, p2 => pmap
+              (atomic r1)
+              (ext $ ext (\lam j => \let p2' => convertArrayEquality p2 | p2Result => pmap (\lam (z : Array _ _) => z j) p2' \in unrenameTerm rInj p2Result))
+        }
+      | notH f, notH f', p =>
+        \let p' => FormulaCodeDec.formulaCode-decode $ FormulaCodeDec.formulaCode-encode p
+        \in pmap notH $ unrename rInj p'
+      | impH a f, impH a1 f', p =>
+        \let
+          | (p1, p2) => FormulaCodeDec.formulaCode-encode p
+          | p1' => FormulaCodeDec.formulaCode-decode p1
+          | p2' => FormulaCodeDec.formulaCode-decode p2
+        \in pmap2 impH (unrename rInj p1') (unrename rInj p2')
+      | cAnd a f, cAnd a1 f', p =>
+        \let
+          | (p1, p2) => FormulaCodeDec.formulaCode-encode p
+          | p1' => FormulaCodeDec.formulaCode-decode p1
+          | p2' => FormulaCodeDec.formulaCode-decode p2
+        \in pmap2 cAnd (unrename rInj p1') (unrename rInj p2')
+      | forAllH f, forAllH f', p =>
+        \let
+          | p' => FormulaCodeDec.formulaCode-decode $ FormulaCodeDec.formulaCode-encode p
+        \in pmap forAllH (unrename (\lam {v : variable (suc c)} {v' : variable (suc c)} p => \case \elim v, \elim v', \elim p \with {
+          | 0, 0, p => idp
+          | 0, suc f1, p => \let p : 0 = suc _ => p \in usingOnly p contradiction
+          | suc f1, 0, p => \let p : suc _ = 0 => p \in usingOnly p contradiction
+          | suc f1, suc f2, p => \let p' => unfsuc p \in pmap fsuc (rInj p')
+        }) p')
+      | cExists f, cExists f', p =>
+        \let
+          | p' => FormulaCodeDec.formulaCode-decode $ FormulaCodeDec.formulaCode-encode p
+        \in pmap cExists (unrename (\lam {v : variable (suc c)} {v' : variable (suc c)} p => \case \elim v, \elim v', \elim p \with {
+          | 0, 0, p => idp
+          | 0, suc f1, p => \let p : 0 = suc _ => p \in usingOnly p contradiction
+          | suc f1, 0, p => \let p : suc _ = 0 => p \in usingOnly p contradiction
+          | suc f1, suc f2, p => \let p' => unfsuc p \in pmap fsuc (rInj p')
+        }) p')
   }
 
 \func Substitution {_ : Language} (c c' : Context) => variable c -> Term c'
@@ -84,6 +168,7 @@
       }
 
     -- TODO: this proof seems very complicated. What is the general principle?
+
     \func distributeExtends {_ : Language} {c c' c'' : Context} {s : Substitution c c'} {s' : Substitution c' c''} :
       (\lam v => substituteTerm (Extend.extends s v) (Extend.extends s')) = {Substitution (suc c) (suc c'')}
       Extend.extends (\lam v => substituteTerm (s v) s') => ext (helper s s')
@@ -101,9 +186,9 @@
 
         \private \func helper2 {_ : Language} {c' c'' : Context} (t : Term c') (s' : Substitution c' c'') :
           substituteTerm (Rename.renameTerm t fsuc) (Extend.extends s') = Rename.renameTerm (substituteTerm t s') fsuc
-          \elim t
-            | var v => idp
-            | apply f args => pmap (apply f) (ext $ ext (\lam j => helper2 (args j) s'))
+        \elim t
+          | var v => idp
+          | apply f args => pmap (apply f) (ext $ ext (\lam j => helper2 (args j) s'))
       }
 
     \func substitute {_ : Language} {c c' : Context} (f : Formula c) (s : Substitution c c') : Formula c'

@@ -1,13 +1,13 @@
 \import Data.Fin
-\import Function.Meta
 \import Logic
 \import Logic.Meta
 \import Meta
+\import Set.Subset
 \import syntax.Context
 \import syntax.Lift
 \import syntax.Substitution
 \import syntax.Syntax
-\import util.NatUtil
+\import util.SetUtil
 
 \func FreeinTerm {_ : Language} {c : Context} (t : Term c) (v : Context.variable c) : \Prop
 \elim t
@@ -57,8 +57,18 @@
     }) h
 
 \func notFreeInLift {_ : Language} {c : Context} {f : Formula c}
-                      (h : FreeInFormula (liftFormula {_} {1} f) 0)
+                      (h : FreeInFormula (liftFormula 1 f) 0)
   : Empty
   => notFreeInRename
       (\lam v' (p : 0 = {Fin (suc c)} suc v') => usingOnly p contradiction)
       h
+
+\func freeVarsFormula {_ : Language} {c : Context} (f : Formula c) : Set (Context.variable c)
+  => \lam v => FreeInFormula f v
+
+\func freeVars {_ : Language} {c : Context} (T : Theory c) : Set (Context.variable c)
+  => \lam v => ∃ (f : Formula c) (f ∈ T) (FreeInFormula f v)
+
+
+\func RenameFreeTerm {_ : Language} (c c' : Context) (t : Term c) => \Pi (v : Context.variable c) (FreeinTerm t v) -> Context.variable c'
+\func RenameFree {_ : Language} (c c' : Context) (f : Formula c) => \Pi (v : Context.variable c) (FreeInFormula f v) -> Context.variable c'

@@ -1,5 +1,6 @@
 \import Data.Array
 \import Data.Fin (fsuc)
+\import Data.Maybe
 \import Data.Or
 \import Equiv
 \import Function.Meta
@@ -36,7 +37,7 @@
       (inP ((), _))
       }, absurd))
       | a :: l => \let rec => asRecursive {X} {l} \in unfold finiteUnion
-          (ext (\lam x => ext (
+          (ext (\lam _ => ext (
             \case \elim __ \with {
               | inP (0, h) => byLeft h
               | inP (suc i, h) => byRight $ rewriteI rec $ inP (i, h)
@@ -90,8 +91,18 @@
        })
   )
 
-\func mapSet {X Y : \Set} (S : Set X) (f : X -> Y) : Set Y
-  => \lam y => ∃ (x : X) (x ∈ S) (y = f x)
+\func mapSet {X Y : \Set} (S : Set X) (f : \Pi (x : X) (e : x ∈ S) -> Y) : Set Y => \lam y => ∃ (x : X) (e : x ∈ S) (y = f x e)
+
+\func mapSetArray {X Y : \Set} {a : Array X} {f : \Pi (x : X) (e : x ∈ setOfArray a) -> Y}
+  : mapSet (setOfArray a) f = setOfArray (\lam j => f (a j) (inP (j, idp))) =>
+  ext $ (\lam y => ext $ (
+                           \case \elim y, \elim __ \with {
+                             | _, inP (x, inP (i, idp), idp) => inP (i, idp)
+                           },
+                           \case \elim y, \elim __ \with {
+                             | _, inP (i, idp) => inP (a i, inP (i, idp), idp)
+                           }
+                         ))
 
 \module SubsetHelper \where {
   \func subsetAdd {X : \Set} {x : X} {S S' : Set X} (h : S ⊆ S') : add S x ⊆ add S' x => \case \elim __ \with {
@@ -185,9 +196,9 @@
 
   \func FinFiniteUnion {X : DecSet} (S : Array (Set X))
                        (h : DArray {S.len} (\lam i => FinSet (Elements (S i)))) : FinSet (Elements (finiteUnion S))
-    \elim S
-      | nil => rewrite finiteUnion.asRecursive FinEmpty
-      | a :: l => rewrite finiteUnion.asRecursive $ FinUnion (h 0) (rewriteI finiteUnion.asRecursive (FinFiniteUnion _ (\lam i => h (suc i))))
+  \elim S
+    | nil => rewrite finiteUnion.asRecursive FinEmpty
+    | a :: l => rewrite finiteUnion.asRecursive $ FinUnion (h 0) (rewriteI finiteUnion.asRecursive (FinFiniteUnion _ (\lam i => h (suc i))))
 
   \func FinWithout {X : DecSet} {S S' : Set X} (h : FinSet (Elements S)) (d : \Pi (x : X) -> Dec (x ∈ S')) : FinSet (Elements (S ∖ S')) =>
     \case finToArray h \with {
@@ -206,4 +217,11 @@
       | f_sec => contradiction
     }
     \in rewriteI p in EmptyFin
+
+  \func FinMap {X Y : DecSet} {S : Set X} (h : FinSet (Elements S))
+               (f : \Pi (x : X) (e : x ∈ S) -> Y) : FinSet (Elements (mapSet S f)) => \case finToArray h \with {
+    | inP (a, p) => run {
+      {?}
+    }
+  }
 }
