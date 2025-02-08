@@ -29,3 +29,4 @@
   | cExistsIntro t prf p => cExistsIntro t (prfWeaken prf sub) p
   | cAndElim1 prf p => cAndElim1 (prfWeaken prf sub) p
   | cAndElim2 prf p => cAndElim2 (prfWeaken prf sub) p
+  | forAllIntro f1 prf p => forAllIntro f1 (prfWeaken prf (SubsetHelper.setSubset sub)) p

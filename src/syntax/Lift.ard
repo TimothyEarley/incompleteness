@@ -55,13 +55,29 @@
       (forAllH $ forAllH $ equal #0 #1) => idp
 
     \func unliftFormula1 {_ : Language} {c : Context}
-                        (f : Formula (suc c))
-                        (h : Not (FreeInFormula f 0))
-      : Formula c
-      => Rename.renameFree f (\lam (v : Fin (suc c)) free => \case \elim v, \elim free \with {
-        | 0, free => absurd $ h free
-        | suc v, _ => v
-      })
+                         (f : Formula (suc c))
+                         (h : Not (FreeInFormula f 0))
+      : Formula c => Rename.renameFree f (\lam (v : Fin (suc c)) free => \case \elim v, \elim free \with {
+      | 0, free => absurd $ h free
+      | suc v, _ => v
+    })
+
+    \func unliftFormula1Path {_ : Language} {c : Context}
+                             {f f' : Formula (suc c)}
+                             (p : f = f')
+                             (h : Not (FreeInFormula f 0))
+                             (h' : Not (FreeInFormula f' 0))
+      : unliftFormula1 f h = unliftFormula1 f' h' \elim p
+      | idp => idp
+
+    \func liftUnlift1 {_ : Language} {c : Context}
+                      {f : Formula (suc c)} (h : Not (FreeInFormula f 0))
+      : liftFormula 1 (unliftFormula1 f h) = f => {?} -- TODO: big chunk missing, reorganise
+
+    \func unliftLift1 {_ : Language} {c : Context}
+                      {f : Formula c}
+      : unliftFormula1 (liftFormula 1 f) notFreeInLift = {Formula c} f => {?} -- TODO: big chunk missing, reorganise
+
 
     \func unliftPath {_ : Language} (delta : Context) {c : Context} {f f' : Formula c} (p : liftFormula delta f = liftFormula delta f')
       : f = f' => Rename.unrename liftFin.unliftFinPath p
@@ -84,7 +100,8 @@
       | apply f args => pmap (apply f) (ext $ ext (\lam j => reverseTerm {_} {c} {args j}))
   }
 
-\func liftTheory {_ : Language} {delta c : Context} (T : Theory c) : Theory (delta + c) => mapSet T (\lam f _ => liftFormula delta f)
+\func liftTheory {_ : Language} {delta c : Context} (T : Theory c) : Theory (delta + c) =>
+  mapSet T (\lam f _ => liftFormula delta f)
 
 \func subsituteLiftTerm1S {_ : Language} {c c' : Context} {t : Term c} {s : Substitution (suc c) c'}
   : Substitution.substituteTerm (liftTerm {_} {1} t) s = Substitution.substituteTerm t (\lam v => s (fsuc v))

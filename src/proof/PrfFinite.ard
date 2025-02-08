@@ -171,27 +171,51 @@
     \let
       | h => prfFinite prf
     \in (h.1, h.2, h.3, cAndElim2 h.4 p)
-  | forAllIntro f prf p =>
-    \let
-      | h => prfFinite prf
-      | h3 : FinSet (Elements h.1) => h.3
-      --       | ourSet : Set (Formula c) => mapSet' h.1 (liftFormula 1)
-      | zeroNotFreeInH1 : 0 ∉ {Fin (suc c)} freeVars h.1 => \case \elim __ \with {
-        | inP (f, e, free) => \case h.2 e \with {
-          | inP (f', e', p') => notFreeInLift $ rewriteI p' $ free
+  | forAllIntro f prf p => rewrite p (forAllFinite prf)
+
+  \where {
+    \func forAllFinite {_ : DecLanguage} {c : Context} {axioms : Theory c} {f : Formula (suc c)}
+                       (prf : Prf (liftTheory {_} {1} axioms) f) :
+      \Sigma
+        (axioms' : Theory c)
+        (axioms' ⊆ axioms)
+        (FinSet (Elements axioms'))
+        (Prf axioms' (forAllH f)) =>
+      \let
+        | (h1, h2, h3, h4) => prfFinite prf
+        | zeroNotFreeInH1 : 0 ∉ {Fin (suc c)} freeVars h1 => \case \elim __ \with {
+          | inP (f, e, free) => \case h2 e \with {
+            | inP (f', e', p') => notFreeInLift $ rewriteI p' $ free
+          }
         }
-      }
-      | ourSet : Set (Formula c) => mapSet h.1 (\lam x xe => liftFormula.unliftFormula1 x (\lam free => zeroNotFreeInH1 (inP (x, xe, free))))
-    \in (
-      ourSet,
-    --       \lam e => \case h.2 e \with {
-    --         | inP (x', e', p') => \let z => liftFormula.unliftPath 1 p' \in rewrite z e'
-    --       },
-      \lam {x} => \case \elim x, \elim __ \with {
-        | _, inP (f, e, idp) => \case h.2 {f} e \with {
-          | inP (f', e', p') => \let p'' => p' \in {?}
-        }
-      },
-      {?},
-      forAllIntro f {?} p
-    )
+        | zeroNotFreeInAnyH1 : \Pi (x : Formula (suc c)) (x ∈ h1) -> Not (FreeInFormula x 0)
+        => \lam x e free => zeroNotFreeInH1 (inP (x, e, free))
+        | ourSet : Theory c => mapSet h1
+            (\lam x xe => liftFormula.unliftFormula1 x (zeroNotFreeInAnyH1 x xe))
+        | ourSetLifted : liftTheory {_} {1} ourSet = {Theory (suc c)} h1 => liftUnlift zeroNotFreeInAnyH1
+      \in (
+        ourSet,
+        \lam {x} o => \case \elim x, \elim o \with {
+          | _, inP (x, e, idp) => \case h2 e \with {
+            | inP (x', e', p') =>
+              \let
+                | p'' : x' = liftFormula.unliftFormula1 x (zeroNotFreeInAnyH1 x e) => inv $
+                liftFormula.unliftFormula1Path p' (rewrite p' notFreeInLift) notFreeInLift
+                  *> liftFormula.unliftLift1
+              \in rewriteI p'' e'
+          }
+        },
+        FinSets.FinMap h3 _ (\lam _ _ _ => idp),
+        forAllIntro f (rewrite ourSetLifted h4) idp
+      )
+
+    \func liftUnlift {_ : Language} {c : Context} {S : Theory (suc c)}
+                     (h : \Pi (x : Formula (suc c)) (x ∈ S) -> Not (FreeInFormula x 0))
+      : liftTheory {_} {1} (mapSet S (\lam x xe => liftFormula.unliftFormula1 x (h x xe))) = {Theory (suc c)} S =>
+      ext (\lam f => ext (
+        \lam l => \case \elim l \with {
+          | inP (f', inP (x, xe, p'), p) => rewrite (p, p', liftFormula.liftUnlift1 (h _ _)) $ xe
+        },
+        \lam s => inP (liftFormula.unliftFormula1 f (h f s), inP (f, s, idp), inv $ liftFormula.liftUnlift1 (h f s))
+      ))
+  }

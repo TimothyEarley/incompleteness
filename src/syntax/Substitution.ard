@@ -79,10 +79,10 @@
         | equal a b => equal (renameTermFree a (\lam v free => r v (byLeft free))) (renameTermFree b (\lam v free => r v (byRight free)))
         | atomic rel terms => atomic rel $ \lam i => renameTermFree (terms i) {?}
         | notH f => notH $ renameFree f r
-        | impH antecedent consequent => impH (renameFree antecedent r) (renameFree consequent r)
-        | cAnd a b => cAnd (renameFree a r) (renameFree b r)
-        | forAllH f => forAllH $ renameFree f (Extend.extend r)
-        | cExists f => cExists $ renameFree f (Extend.extend r)
+        | impH antecedent consequent => impH (renameFree antecedent {?}) (renameFree consequent {?})
+        | cAnd a b => cAnd (renameFree a {?}) (renameFree b {?})
+        | forAllH f => forAllH $ renameFree f {?}
+        | cExists f => cExists $ renameFree f {?}
 
     \func unrenameTerm {_ : Language} {c c' : Context} {t t' : Term c} {r : Rename c c'}
                        (rInj : \Pi {v v' : variable c} (r v = r v') -> v = v')

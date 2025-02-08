@@ -1,6 +1,5 @@
 \import Data.Array
 \import Data.Fin (fsuc)
-\import Data.Maybe
 \import Data.Or
 \import Equiv
 \import Function.Meta
@@ -91,7 +90,8 @@
        })
   )
 
-\func mapSet {X Y : \Set} (S : Set X) (f : \Pi (x : X) (e : x ∈ S) -> Y) : Set Y => \lam y => ∃ (x : X) (e : x ∈ S) (y = f x e)
+\func mapSet {X Y : \Set} (S : Set X) (f : \Pi (x : X) (e : x ∈ S) -> Y) : Set Y =>
+  \lam y => ∃ (x : X) (e : x ∈ S) (y = f x e)
 
 \func mapSetArray {X Y : \Set} {a : Array X} {f : \Pi (x : X) (e : x ∈ setOfArray a) -> Y}
   : mapSet (setOfArray a) f = setOfArray (\lam j => f (a j) (inP (j, idp))) =>
@@ -137,6 +137,12 @@
   }
 
   \func emptySubset {X : \Set} {S : Set X} : ∅ ⊆ S => \lam e => absurd e
+
+  \func setSubset {X Y : \Set} {S S' : Set X} {f : X -> Y}
+                  (sub : S ⊆ S')
+    : mapSet S (\lam x _ => f x) ⊆ mapSet S' (\lam x _ => f x) => \case \elim __ \with {
+    | inP (x, e, p) => inP (x, sub e, p)
+  }
 }
 
 \module FinSets \where {
@@ -219,9 +225,29 @@
     \in rewriteI p in EmptyFin
 
   \func FinMap {X Y : DecSet} {S : Set X} (h : FinSet (Elements S))
-               (f : \Pi (x : X) (e : x ∈ S) -> Y) : FinSet (Elements (mapSet S f)) => \case finToArray h \with {
-    | inP (a, p) => run {
-      {?}
-    }
+               (f : \Pi (x : X) (e : x ∈ S) -> Y)
+               (fIgnoresE : \Pi (x : X) (e e' : x ∈ S) -> f x e = f x e')
+    : FinSet (Elements (mapSet S f)) => \case finToArray h \with {
+    | inP (a, p) =>
+      \let
+        | S' => mapSet (setOfArray a) (\lam x e => f x $ rewrite p e)
+        | p' : mapSet S f = S' => ext (\lam _ => ext (
+          \case \elim __ \with {
+            | inP (x, e, q) => inP (x, rewriteI p e, q *> fIgnoresE x _ _)
+          },
+          \case \elim __ \with {
+            | inP (x, e, q) => inP (x, rewrite p e, q *> fIgnoresE x _ _)
+          }
+        ))
+      \in rewrite p' $ FinMap' _
   }
+    \where {
+      \func FinMap' {X : \Set} {Y : DecSet} {n : Nat} {a : Array X n}
+                    (f : \Pi (x : X) (x ∈ setOfArray a) -> Y)
+        : FinSet (Elements (mapSet (setOfArray a) f)) =>
+        \let
+          | a' : Array Y a.len => \lam j => f (a j) (inP (j, idp))
+          | p : mapSet (setOfArray a) f = setOfArray a' => mapSetArray {X} {Y} {a} {f}
+        \in rewrite p $ FinArray {Y} {a'}
+    }
 }
