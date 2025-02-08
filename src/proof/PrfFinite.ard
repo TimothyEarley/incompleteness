@@ -200,7 +200,7 @@
             | inP (x', e', p') =>
               \let
                 | p'' : x' = liftFormula.unliftFormula1 x (zeroNotFreeInAnyH1 x e) => inv $
-                liftFormula.unliftFormula1Path p' (rewrite p' notFreeInLift) notFreeInLift
+                liftFormula.unliftFormula1Path p' notFreeInLift
                   *> liftFormula.unliftLift1
               \in rewriteI p'' e'
           }

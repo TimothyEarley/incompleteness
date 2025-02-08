@@ -34,41 +34,54 @@
   | apply f args, inP (j, free) => notFreeInRenameTerm h' free
 
 \func notFreeInRename {_ : Language} {c c' : Context} {f : Formula c} {r : Rename c c'}
-                          {v : Context.variable c'}
-                          (h' : \Pi (v' : Context.variable c) -> v /= r v')
-                          (h : FreeInFormula (Rename.rename f r) v)
+                      {v : Context.variable c'}
+                      (h' : \Pi (v' : Context.variable c) -> v /= r v')
+                      (h : FreeInFormula (Rename.rename f r) v)
   : Empty
-  \elim f, h
-    | equal a b, byLeft a1 => notFreeInRenameTerm h' a1
-    | equal a b, byRight b1 => notFreeInRenameTerm h' b1
-    | atomic r1 terms, inP (j, free) => notFreeInRenameTerm h' free
-    | notH f, h => notFreeInRename h' h
-    | impH a f, byLeft a1 => notFreeInRename h' a1
-    | impH a f, byRight b => notFreeInRename h' b
-    | cAnd a f, byLeft a1 => notFreeInRename h' a1
-    | cAnd a f, byRight b => notFreeInRename h' b
-    | forAllH f, h => notFreeInRename (\lam (v' : Fin (suc c)) p => \case \elim v', \elim p \with {
-      | 0, p => \let p' : suc v = 0 => p \in usingOnly p' contradiction
-      | suc v', p => h' v' (unfsuc p)
-    }) h
-    | cExists f, h => notFreeInRename (\lam (v' : Fin (suc c)) p => \case \elim v', \elim p \with {
-      | 0, p => \let p' : suc v = 0 => p \in usingOnly p' contradiction
-      | suc v', p => h' v' (unfsuc p)
-    }) h
+\elim f, h
+  | equal a b, byLeft a1 => notFreeInRenameTerm h' a1
+  | equal a b, byRight b1 => notFreeInRenameTerm h' b1
+  | atomic r1 terms, inP (j, free) => notFreeInRenameTerm h' free
+  | notH f, h => notFreeInRename h' h
+  | impH a f, byLeft a1 => notFreeInRename h' a1
+  | impH a f, byRight b => notFreeInRename h' b
+  | cAnd a f, byLeft a1 => notFreeInRename h' a1
+  | cAnd a f, byRight b => notFreeInRename h' b
+  | forAllH f, h => notFreeInRename (\lam (v' : Fin (suc c)) p => \case \elim v', \elim p \with {
+    | 0, p => \let p' : suc v = 0 => p \in usingOnly p' contradiction
+    | suc v', p => h' v' (unfsuc p)
+  }) h
+  | cExists f, h => notFreeInRename (\lam (v' : Fin (suc c)) p => \case \elim v', \elim p \with {
+    | 0, p => \let p' : suc v = 0 => p \in usingOnly p' contradiction
+    | suc v', p => h' v' (unfsuc p)
+  }) h
+
+\func notFreeInLiftTerm {_ : Language} {c : Context} {t : Term c}
+  (h : FreeinTerm (liftTerm {_} {1} t) 0) : Empty
+  => notFreeInRenameTerm (\lam v' (p : 0 = {Fin (suc c)} suc v') => usingOnly p contradiction) h
 
 \func notFreeInLift {_ : Language} {c : Context} {f : Formula c}
-                      (h : FreeInFormula (liftFormula 1 f) 0)
-  : Empty
-  => notFreeInRename
-      (\lam v' (p : 0 = {Fin (suc c)} suc v') => usingOnly p contradiction)
-      h
+                    (h : FreeInFormula (liftFormula 1 f) 0)
+  : Empty => notFreeInRename
+    (\lam v' (p : 0 = {Fin (suc c)} suc v') => usingOnly p contradiction)
+    h
 
-\func freeVarsFormula {_ : Language} {c : Context} (f : Formula c) : Set (Context.variable c)
-  => \lam v => FreeInFormula f v
+\func freeVarsFormula {_ : Language} {c : Context} (f : Formula c) : Set (Context.variable c) =>
+  \lam v => FreeInFormula f v
 
-\func freeVars {_ : Language} {c : Context} (T : Theory c) : Set (Context.variable c)
-  => \lam v => ∃ (f : Formula c) (f ∈ T) (FreeInFormula f v)
+\func freeVars {_ : Language} {c : Context} (T : Theory c) : Set (Context.variable c) =>
+  \lam v => ∃ (f : Formula c) (f ∈ T) (FreeInFormula f v)
 
+\func RenameFreeTerm {_ : Language} (c c' : Context) (t : Term c) =>
+  \Pi (v : Context.variable c) (FreeinTerm t v) -> Context.variable c'
+  \where {
+    \func fromRename {_ : Language} {c c' : Context} (r : Rename c c') {t : Term c} : RenameFreeTerm c c' t =>
+      \lam v _ => r v
+  }
 
-\func RenameFreeTerm {_ : Language} (c c' : Context) (t : Term c) => \Pi (v : Context.variable c) (FreeinTerm t v) -> Context.variable c'
-\func RenameFree {_ : Language} (c c' : Context) (f : Formula c) => \Pi (v : Context.variable c) (FreeInFormula f v) -> Context.variable c'
+\func RenameFree {_ : Language} (c c' : Context) (f : Formula c) =>
+  \Pi (v : Context.variable c) (FreeInFormula f v) -> Context.variable c'
+  \where {
+    \func fromRename {_ : Language} {c c' : Context} (r : Rename c c') {f : Formula c} : RenameFree c c' f =>
+      \lam v _ => r v
+  }

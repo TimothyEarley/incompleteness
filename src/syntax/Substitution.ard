@@ -44,6 +44,17 @@
     | 0, free => 0
     | suc f1, free => fsuc $ r f1 (freeInCtor f1 free)
   }
+  \where {
+    \func extend= {_ : Language} {c c' : Context} {f : Formula (inc c)}
+                  (ctor : \Pi {d : Context} (Formula (suc d)) -> Formula d)
+                  {r : Rename c c'}
+                  (freeInCtor : \Pi (v : Fin c) (FreeInFormula f (suc v)) -> FreeInFormula (ctor f) v)
+                  : RenameFree.fromRename (Extend.extend r) = Extend.extendFree ctor (RenameFree.fromRename r) freeInCtor
+      => ext $ (\lam v free => \case \elim v, \elim free \with {
+        | 0, free => idp
+        | suc f1, free => idp
+      })
+  }
 }
 
 \func Rename {_ : Language} (c c' : Context) => variable c -> variable c'
@@ -67,10 +78,19 @@
           | apply f args => pmap (apply f) $ ext $ ext (\lam j => compose {_} {c} {c'} {c''} {args j})
       }
 
+    -- same as above but we additionally guarantee r is only applied on the free vars
+
     \func renameTermFree {_ : Language} {c c' : Context} (t : Term c) (remap : RenameFreeTerm c c' t) : Term c'
     \elim t
       | var v => var $ remap v idp
       | apply f args => apply f (\lam i => renameTermFree (args i) (\lam v free => remap v (inP (i, free))))
+    \where {
+      -- proof that renameTermFree works the same as renameTerm
+      \func renameTerm= {_ : Language} {c c' : Context} {t : Term c} {r : Rename c c'} : renameTerm t r = renameTermFree t (RenameFreeTerm.fromRename r)
+        \elim t
+          | var v => idp
+          | apply f args => pmap (apply f) $ ext $ ext (\lam j => renameTerm= {_} {c} {c'} {args j})
+    }
 
     \func rename {_ : Language} {c c' : Context} (f : Formula c) (r : Rename c c') : Formula c'
     \elim f
@@ -93,6 +113,19 @@
       | cAnd a b => cAnd (renameFree a (\lam v free => r v (byLeft free))) (renameFree b (\lam v free => r v (byRight free)))
       | forAllH f => forAllH $ renameFree f (Extend.extendFree forAllH r (\lam _ f1 => f1))
       | cExists f => cExists $ renameFree f (Extend.extendFree cExists r (\lam _ f1 => f1))
+    \where {
+      -- proof that renameFree works the same as rename
+
+      \func rename= {_ : Language} {c c' : Context} {f : Formula c} {r : Rename c c'} : rename f r = renameFree f (RenameFree.fromRename r)
+      \elim f
+        | equal a b => pmap2 equal renameTermFree.renameTerm= renameTermFree.renameTerm=
+        | atomic r1 terms => pmap (atomic r1) $ ext $ ext (\lam _ => renameTermFree.renameTerm=)
+        | notH f => pmap notH rename=
+        | impH a f => pmap2 impH rename= rename=
+        | cAnd a f => pmap2 cAnd rename= rename=
+        | forAllH f => pmap forAllH (rename= *> pmap (renameFree f) (Extend.extendFree.extend= forAllH (\lam _ f1 => f1)))
+        | cExists f => pmap cExists (rename= *> pmap (renameFree f) (Extend.extendFree.extend= cExists (\lam _ f1 => f1)))
+    }
 
     \func unrenameTerm {_ : Language} {c c' : Context} {t t' : Term c} {r : Rename c c'}
                        (rInj : \Pi {v v' : variable c} (r v = r v') -> v = v')
