@@ -35,6 +35,15 @@
   \func extendsN {_ : Language} {c c' : Context} (s : Substitution c c') (n : Nat) : Substitution (n + c) (n + c') \elim n
     | 0 => s
     | suc n => extendsN (var 0 :: (\lam v => Rename.renameTerm (s v) fsuc)) n
+
+  \func extendFree {_ : Language} {c c' : Context} {f : Formula (inc c)}
+                   (ctor : \Pi {d : Context} (Formula (suc d)) -> Formula d)
+                   (r : RenameFree c c' (ctor f))
+                   (freeInCtor : \Pi (v : Fin c) (FreeInFormula f (suc v)) -> FreeInFormula (ctor f) v)
+    : RenameFree (inc c) (inc c') f => \lam v free => \case \elim v, \elim free \with {
+    | 0, free => 0
+    | suc f1, free => fsuc $ r f1 (freeInCtor f1 free)
+  }
 }
 
 \func Rename {_ : Language} (c c' : Context) => variable c -> variable c'
@@ -59,9 +68,9 @@
       }
 
     \func renameTermFree {_ : Language} {c c' : Context} (t : Term c) (remap : RenameFreeTerm c c' t) : Term c'
-      \elim t
-        | var v => var $ remap v idp
-        | apply f args => apply f (\lam i => renameTermFree (args i) (\lam v free => remap v (inP (i, free))))
+    \elim t
+      | var v => var $ remap v idp
+      | apply f args => apply f (\lam i => renameTermFree (args i) (\lam v free => remap v (inP (i, free))))
 
     \func rename {_ : Language} {c c' : Context} (f : Formula c) (r : Rename c c') : Formula c'
     \elim f
@@ -74,15 +83,16 @@
       | cExists f => cExists $ rename f (Extend.extend r)
 
     -- same as above but we additionally guarantee r is only applied on the free vars
+
     \func renameFree {_ : Language} {c c' : Context} (f : Formula c) (r : RenameFree c c' f) : Formula c'
-      \elim f
-        | equal a b => equal (renameTermFree a (\lam v free => r v (byLeft free))) (renameTermFree b (\lam v free => r v (byRight free)))
-        | atomic rel terms => atomic rel $ \lam i => renameTermFree (terms i) {?}
-        | notH f => notH $ renameFree f r
-        | impH antecedent consequent => impH (renameFree antecedent {?}) (renameFree consequent {?})
-        | cAnd a b => cAnd (renameFree a {?}) (renameFree b {?})
-        | forAllH f => forAllH $ renameFree f {?}
-        | cExists f => cExists $ renameFree f {?}
+    \elim f
+      | equal a b => equal (renameTermFree a (\lam v free => r v (byLeft free))) (renameTermFree b (\lam v free => r v (byRight free)))
+      | atomic rel terms => atomic rel $ \lam i => renameTermFree (terms i) (\lam v free => r v (inP (i, free)))
+      | notH f => notH $ renameFree f r
+      | impH antecedent consequent => impH (renameFree antecedent (\lam v free => r v (byLeft free))) (renameFree consequent (\lam v free => r v (byRight free)))
+      | cAnd a b => cAnd (renameFree a (\lam v free => r v (byLeft free))) (renameFree b (\lam v free => r v (byRight free)))
+      | forAllH f => forAllH $ renameFree f (Extend.extendFree forAllH r (\lam _ f1 => f1))
+      | cExists f => cExists $ renameFree f (Extend.extendFree cExists r (\lam _ f1 => f1))
 
     \func unrenameTerm {_ : Language} {c c' : Context} {t t' : Term c} {r : Rename c c'}
                        (rInj : \Pi {v v' : variable c} (r v = r v') -> v = v')
