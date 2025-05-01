@@ -1,0 +1,27 @@
+\import Data.Fin
+\import Function.Meta
+\import Paths
+\open Nat (+)
+
+
+-- adds extra context to the end
+-- so if the term uses the variables x0 x1 x2 and we lift by 3, then the context becomes x0 x1 x2 y0 y1 y2
+-- and the term uses the correct variables, i.e. at the bottom x2 goes from 0 to 3
+
+-- lifting a fin from n to m corresponds to expand-fin-right delta
+
+\func liftFin {delta n : Nat} (i : Fin n) : Fin (delta + n)
+\elim delta
+  | 0 => i
+  | suc delta => fsuc $ liftFin i
+  \where {
+    \private \func isActuallyJustAddition {delta n : Nat} {i : Fin n} : liftFin {delta} i = {Nat} delta + i
+    \elim delta
+      | 0 => idp
+      | suc delta => pmap suc isActuallyJustAddition
+
+    \func unliftFinPath {delta n : Nat} {i j : Fin n} (p : liftFin i = {Fin (delta + n)} liftFin j) : i = j
+    \elim delta
+      | 0 => p
+      | suc delta => \let p' => unfsuc p \in unliftFinPath p'
+  }

@@ -11,7 +11,7 @@
 \import proof.Proof
 \import syntax.Context
 \import syntax.Free
-\import syntax.Lift
+\import syntax.lift.Lift
 \import syntax.Substitution
 \import syntax.Syntax
 \import util.SetUtil

@@ -10,8 +10,8 @@
 \import decidable.TermCode
 \import syntax.Context
 \import syntax.Free
-\import syntax.Lift
 \import syntax.Syntax
+\import syntax.lift.LiftTerm
 \import util.ArrayUtil
 \open Context
 \open Nat (+)
@@ -24,10 +24,10 @@
     }
 
   \func extends {_ : Language} {c c' : Context} (s : Substitution c c') : Substitution (inc c) (inc c') =>
-    var 0 :: (\lam i => liftTerm {_} {1} (s i))
+    var 0 :: (\lam i => liftTerm {_} 1 (s i))
     \where {
       \func atSuc {_ : Language} {c c' : Context} (s : Substitution c c') {v : variable c}
-        : extends s (fsuc v) = Rename.renameTerm (s v) fsuc => idp
+        : extends s (fsuc v) = Rename.renameTerm (s v) fsuc => \peval liftTerm 1 (s v)
     }
 
   -- extending means addong an array to the left
@@ -230,7 +230,7 @@
         \private \func helper2 {_ : Language} {c' c'' : Context} (t : Term c') (s' : Substitution c' c'') :
           substituteTerm (Rename.renameTerm t fsuc) (Extend.extends s') = Rename.renameTerm (substituteTerm t s') fsuc
         \elim t
-          | var v => idp
+          | var v => \peval liftTerm 1 _
           | apply f args => pmap (apply f) (ext $ ext (\lam j => helper2 (args j) s'))
       }
 
@@ -298,6 +298,9 @@
       pmap (substitute f),
       pmap (Extend.extendsN __ n),
       ext,
-      \lam i => cases i idp
+      \lam i => \case \elim i \with {
+        | 0 => idp
+        | suc i => \peval liftTerm _ _
+      }
     }
 }

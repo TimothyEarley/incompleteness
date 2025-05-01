@@ -3,7 +3,7 @@
 \import Paths
 \import Paths.Meta
 \import syntax.Context
-\import syntax.Lift
+\import syntax.lift.Lift
 \import syntax.Substitution
 \import syntax.Syntax
 

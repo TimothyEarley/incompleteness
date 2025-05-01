@@ -7,7 +7,7 @@
 \import Paths.Meta
 \import syntax.Context
 \import syntax.Free
-\import syntax.Lift
+\import syntax.lift.Lift
 \import syntax.Substitution
 \import syntax.Syntax
 \import util.SetUtil
@@ -133,7 +133,7 @@
 
             \private \func evaluateSubstituteTerm {_ : Language} {c c' : Context} {x : Term c}
                                                   (I : Interpretation c') {I' : Interpretation c I.structure} {s : variable c -> Term c'}
-                                                  (hI' : \Pi (v : variable c) (FreeinTerm x v) -> I'.variableValues v = evaluate I (s v))
+                                                  (hI' : \Pi (v : variable c) (FreeInTerm x v) -> I'.variableValues v = evaluate I (s v))
               : evaluate I (substituteTerm x s) = evaluate I' x
             \elim x
               | var v => inv (hI' v idp)

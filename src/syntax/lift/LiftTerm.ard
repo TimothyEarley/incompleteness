@@ -1,0 +1,71 @@
+\import Data.Fin
+\import Function.Meta
+\import Logic
+\import Paths
+\import Paths.Meta
+\import syntax.Context
+\import syntax.Free
+\import syntax.Substitution
+\import syntax.Syntax
+\import syntax.lift.LiftVar
+\open Nat (+)
+
+-- TODO : write an Equivalence?
+
+\sfunc liftTerm {_ : Language} (delta : Context) {c : Context} (t : Term c) : Term (delta + c) =>
+  Rename.renameTerm t (liftFin __)
+  \where {
+    \lemma liftTerm0 {_ : Language} {c : Context} {t : Term c} : liftTerm {_} 0 t = t =>
+      rewrite (\peval liftTerm _ _) (Rename.renameTerm.id (\lam _ => idp))
+
+    \lemma liftTerm1 {_ : Language} {c : Context} {t : Term c} : liftTerm {_} 1 t = Rename.renameTerm t fsuc =>
+      \peval liftTerm _ _
+
+    \sfunc unliftTerm1 {_ : Language} {c : Context} (t : Term (suc c)) (h : Not (FreeInTerm t 0))
+      : Term c => Rename.renameTermFree t (remapHelper h)
+    \where {
+      \func remapHelper {_ : Language} {c : Context} {t : Term (suc c)} (h : Not (FreeInTerm t 0)) : RenameFreeTerm (suc c) c t
+        => \lam v free => \case \elim v, \elim free \with {
+          | 0, free => absurd $ h free
+          | suc v, _ => v
+        }
+    }
+
+    \func unliftTerm1Path {_ : Language} {c : Context}
+                          {t' t : Term (suc c)}
+                          (p : t = t')
+                          (h : Not (FreeInTerm t 0))
+      : unliftTerm1 t h = unliftTerm1 t' (rewriteI p h) \elim p
+      | idp => idp
+
+    \func unliftLift1Term {_ : Language} {c : Context}
+                          {t : Term c}
+                          (h : Not (FreeInTerm (liftTerm {_} 1 t) 0))
+      : unliftTerm1 (liftTerm {_} 1 t) h = {Term c} t
+    \elim t
+      | var v =>
+        \let
+          | p => \peval liftTerm 1 (var v)
+          | p' => unliftTerm1Path p h
+        \in p' *> \peval unliftTerm1 _ _
+      | apply f args =>
+        \let
+          | p => \peval liftTerm 1 (apply f args)
+          | p' => unliftTerm1Path p h
+        \in p' *> (\peval unliftTerm1 _ _) *> pmap (apply f) (ext $ ext (\lam j =>
+            \let
+              | h' : Not (FreeInTerm (liftTerm 1 (args j)) 0) =>
+                \lam free => h $ transportInv (FreeInTerm __ 0) p $ inP $ (j, transport (FreeInTerm __ 0) liftTerm1 free)
+              | r => unliftLift1Term {_} {c} {args j} h'
+              | q => \peval liftTerm 1 (args j)
+              | q' => inv $ unliftTerm1Path q h'
+            \in pmap (Rename.renameTermFree _)
+
+                (ext (\lam (v : Fin (suc c)) free => \case \elim v, \elim free \with {
+                  | 0, free => idp
+                  | suc v, free => idp
+                }))
+
+              *> (inv $ \peval unliftTerm1 _ _) *> q' *>  r
+        ))
+  }
