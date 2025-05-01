@@ -1,5 +1,6 @@
 \import Function.Meta
 \import Logic
+\import Paths
 \import Paths.Meta
 \import Set
 \import Set.Fin
@@ -191,14 +192,22 @@
       )
 
     \private \func extractFromSubsetLifted {_ : Language} {c : Context} {S : Theory (suc c)} {T : Theory c} (h : S ⊆ liftTheory {_} {1} T)
-      : \Sigma (S' : Theory c) (S = liftTheory {_} {1} S')
-      => (mapSet S (\lam f e => liftFormula.unliftFormula1 f (\case h e \with {
-        | inP (x,e,p) => rewrite p $ notFreeInLift
-      })),
-          ext (\lam f => ext (
-            \lam s => \case h s \with {
-              | inP (x,e,p) => inP (x, inP (f, s, {?}) , p)
-            },
-            \lam l => {?}
-                             )))
+      : \Sigma (S' : Theory c) (S = liftTheory {_} {1} S') =>
+        (mapSet S (\lam f e => liftFormula.unliftFormula1 f (\case h e \with {
+          | inP (x,e,p) => rewrite p $ notFreeInLift
+        })),
+         ext (\lam f => ext (
+           \lam s => \case h s \with {
+             | inP (x,e,p) => inP (x, inP (f, s, liftFormula.unliftLift p (rewrite p notFreeInLift)) , p)
+           },
+           \lam l => \case \elim l \with {
+             | inP (_, inP (x', e', idp), p) => \case h e' \with {
+               | inP (_, _, p'') =>
+                 \let
+                    | nf : Not (FreeInFormula x' 0) => rewrite p'' notFreeInLift
+                   | q => liftFormula.liftUnlift nf p
+                 \in transport S q e'
+             }
+           }
+         )))
   }

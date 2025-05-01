@@ -1,6 +1,8 @@
+\import Category.Factorization
 \import Data.Fin
 \import Function.Meta
 \import Logic
+\import Meta
 \import Paths
 \import Paths.Meta
 \import syntax.Context
@@ -9,6 +11,7 @@
 \import syntax.Syntax
 \import syntax.lift.LiftVar
 \open Nat (+)
+\open Context (variable)
 
 \func liftFormula {_ : Language} (delta : Context) {c : Context} (f : Formula c) : Formula (delta + c) =>
   Rename.rename f (\lam v => liftFin v)
@@ -40,11 +43,14 @@
     \func unliftLift {_ : Language} {c : Context} {f : Formula (suc c)} {g : Formula c}
                      (p : f = liftFormula 1 g) (h : Not (FreeInFormula f 0)) : g = unliftFormula1 f h
     \elim p
-      | idp => inv (helper h)
-      \where {
-        \private \func helper {_ : Language} {c : Context} {g : Formula c}
-                              (h : Not (FreeInFormula (Rename.rename g fsuc) 0))
-          : Rename.renameFree (Rename.rename g fsuc) (unliftFormula1.renameFunction h) = g =>
-            Rename.renameFree.composeWithRename *> Rename.renameFree.id (\lam _ _ => idp)
-      }
+      | idp => inv $ Rename.renameFree.composeWithRename *> Rename.renameFree.id (\lam _ _ => idp)
+
+    \func liftUnlift {_ : Language} {c : Context} {f : Formula (suc c)} {g : Formula (suc c)}
+                     (h : Not (FreeInFormula g 0))
+                     (p : f = liftFormula 1 (unliftFormula1 g h)) : g = f
+      \elim p
+        | idp => inv $ Rename.renameFree.composeWithRename' *> Rename.renameFree.id (\lam (v : variable (suc c)) free => \case \elim v, \elim free \with {
+          | 0, free => absurd (h free)
+          | suc v, free => idp
+        })
   }

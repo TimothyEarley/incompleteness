@@ -101,6 +101,15 @@
               composeWithRename {_} {_} {_} {_} {args j}
           )
 
+        \func composeWithRename' {_ : Language} {c c' c'' : Context} {t : Term c} {r : RenameFreeTerm c c' t}
+                                {r' : variable c' -> variable c''}
+          : renameTerm (renameTermFree t r) r' = renameTermFree t (\lam v free => r' (r v free))
+        \elim t
+          | var v => idp
+          | apply f args => pmap (apply f) $ ext $ ext (\lam j =>
+              composeWithRename' {_} {_} {_} {_} {args j}
+          )
+
         \func id {_ : Language} {c : Context} {t : Term c} {r : RenameFreeTerm c c t}
           (h : \Pi (v : variable c) (free : FreeInTerm t v) -> r v free = v)
                  : renameTermFree t r = t
@@ -164,6 +173,28 @@
                                                                    | 0, free => idp
                                                                    | suc f1, free => idp
                                                                  }))
+
+        \func composeWithRename' {_ : Language} {c c' c'' : Context} {f : Formula c} {r : RenameFree c c' f}
+                                {r' : Rename c' c''}
+          : rename (renameFree f r) r' = renameFree f (\lam v free => r' (r v free))
+          \elim f
+            | equal a b => pmap2 equal renameTermFree.composeWithRename' renameTermFree.composeWithRename'
+            | atomic r1 terms => pmap (atomic r1) $ ext $ ext (\lam _ =>
+                renameTermFree.composeWithRename'
+            )
+            | notH f => pmap notH composeWithRename'
+            | impH a f => pmap2 impH composeWithRename' composeWithRename'
+            | cAnd a f => pmap2 cAnd composeWithRename' composeWithRename'
+            | forAllH f => pmap forAllH $ composeWithRename' *> pmap (renameFree f)
+                                                                   (ext (\lam v free => \case \elim v, \elim free \with {
+                                                                     | 0, free => idp
+                                                                     | suc f1, free => idp
+                                                                   }))
+            | cExists f => pmap cExists $ composeWithRename' *> pmap (renameFree f)
+                                                                   (ext (\lam v free => \case \elim v, \elim free \with {
+                                                                     | 0, free => idp
+                                                                     | suc f1, free => idp
+                                                                   }))
 
         \func id {_ : Language} {c : Context} {f : Formula c} {r : RenameFree c c f}
           (h : \Pi (v : variable c) (free : FreeInFormula f v) -> r v free = v)
