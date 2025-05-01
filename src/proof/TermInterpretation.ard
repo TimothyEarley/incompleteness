@@ -126,7 +126,7 @@
               t,
               ⊧.fromSub.substitutionLemma<-
                   (TermInterpretation T)
-                  (\lam (v : Fin (suc c)) _ => \case \elim v \with {
+                  (\lam (v : Fin (suc c)) => \case \elim v \with {
                     | 0 => inv $ termsAre~ t
                     | suc v => termsAre~ (var v)
                   })
@@ -138,7 +138,7 @@
              in~ t,
              ⊧.fromSub.substitutionLemma->
                  (TermInterpretation T)
-                 (\lam (v : Fin (suc c)) _ => \case \elim v \with {
+                 (\lam (v : Fin (suc c)) => \case \elim v \with {
                    | 0 => inv $ termsAre~ t
                    | suc v => termsAre~ (var v)
                  })
@@ -152,7 +152,7 @@
            \let m' => m (in~ t)
            \in ⊧.fromSub.substitutionLemma<-
                (TermInterpretation T)
-               (\lam (v : Fin (suc c)) _ => \case \elim v \with {
+               (\lam (v : Fin (suc c)) => \case \elim v \with {
                  | 0 => inv $ termsAre~ t
                  | suc v => termsAre~ (var v)
                })
@@ -161,7 +161,7 @@
            \let h' => h t
            \in ⊧.fromSub.substitutionLemma->
                (TermInterpretation T)
-               (\lam (v : Fin (suc c)) _ => \case \elim v \with {
+               (\lam (v : Fin (suc c)) => \case \elim v \with {
                  | 0 => inv $ termsAre~ t
                  | suc v => termsAre~ (var v)
                })
