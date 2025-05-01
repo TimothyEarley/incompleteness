@@ -184,8 +184,9 @@
         (Prf axioms' (forAllH f)) =>
       \let
         | rec => prfFinite prf
+        | (S', h) => extractFromSubsetLifted rec.2
       \in (
-        {?},
+        S',
         {?},
         {?},
         forAllIntro f {?} idp
