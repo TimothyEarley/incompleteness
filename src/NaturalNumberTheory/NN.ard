@@ -11,6 +11,7 @@
 \import syntax.lift.Lift
 \import syntax.Substitution
 \import syntax.Syntax
+\import syntax.lift.LiftTerm
 \import util.SetUtil
 
 \instance LNN : DecLanguage
@@ -95,17 +96,5 @@
 
     \func prfSuc/= {a b : Term 0} (h : Prf NN (notH (equal a b)))
       : Prf NN (notH (equal (Succ a) (Succ b))) =>
-      \let
-        | instance : Prf NN (impH (equal (Succ a) (Succ b)) (equal a b)) => run {
-          forAllElim (forAllH $ impH (equal (Succ #1) (Succ #0)) (equal #1 #0)) (AXM $ inP (1, idp)) a,
-          forAllElim (impH (equal (Succ $ liftTerm a) (Succ #0)) (equal (liftTerm a) #0)) (AXM $ byRight idp) b,
-          AXM (run {
-            byRight,
-            unfold Substitution.subst,
-            rewrite subsituteLiftTerm1,
-            rewriteI subsituteLiftTerm1',
-            idp
-          })
-        }
-      \in notHFromimpH _ h instance idp
+      {?}
   }

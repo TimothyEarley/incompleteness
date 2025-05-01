@@ -7,174 +7,44 @@
 \import syntax.Free
 \import syntax.Substitution
 \import syntax.Syntax
-\import syntax.lift.LiftTerm
 \import syntax.lift.LiftVar
 \open Nat (+)
 
-\sfunc liftFormula {_ : Language} (delta : Context) {c : Context} (f : Formula c) : Formula (delta + c) =>
+\func liftFormula {_ : Language} (delta : Context) {c : Context} (f : Formula c) : Formula (delta + c) =>
   Rename.rename f (\lam v => liftFin v)
   \where {
     \private \func example {_ : Language} :
       liftFormula 2 (forAllH $ forAllH (equal #0 #1)) = {Formula 5}
-      (forAllH $ forAllH $ equal #0 #1) => \peval liftFormula _ _
+      (forAllH $ forAllH $ equal #0 #1) => idp
 
     -- do the reverse. Works only if no 0 is free, as that cannot be mapped
 
-    \sfunc unliftFormula1 {_ : Language} {c : Context}
-                          (f : Formula (suc c))
-                          (h : Not (FreeInFormula f 0))
-      : Formula c => Rename.renameFree f (\lam (v : Fin (suc c)) free => \case \elim v, \elim free \with {
-      | 0, free => absurd $ h free
-      | suc v, _ => v
-    })
-
-    \func unliftFormula1Path {_ : Language} {c : Context}
-                             {f f' : Formula (suc c)}
-                             (p : f = f')
-                             (h : Not (FreeInFormula f 0))
-      : unliftFormula1 f h = unliftFormula1 f' (rewriteI p h) \elim p
-      | idp => idp
-
-    \func unliftLift1 {_ : Language} {c : Context}
-                      {f : Formula c}
-      : unliftFormula1 (liftFormula 1 f) notFreeInLift = {Formula c} f \elim f
-      | equal a b => pre _ *> pmap2 equal
-                                  (
-                                    pmap (Rename.renameTermFree _ __) (ext (\lam v free => \case \elim v, \elim free \with {
-                                      | 0, free => idp
-                                      | suc v, free => idp
-                                    }))
-                                      *>
-                                    (inv $ \peval liftTerm.unliftTerm1 (Rename.renameTerm a fsuc) _)
-                                      *>
-                                    inv (liftTerm.unliftTerm1Path (\peval liftTerm 1 a) notFreeInLiftTerm)
-                                      *>
-                                    liftTerm.unliftLift1Term notFreeInLiftTerm
-                                  )
-                                  (
-                                    pmap (Rename.renameTermFree _ __) (ext (\lam v free => \case \elim v, \elim free \with {
-                                      | 0, free => idp
-                                      | suc v, free => idp
-                                    }))
-                                      *>
-                                    (inv $ \peval liftTerm.unliftTerm1 (Rename.renameTerm b fsuc) _)
-                                      *>
-                                    inv (liftTerm.unliftTerm1Path (\peval liftTerm 1 b) notFreeInLiftTerm)
-                                      *>
-                                    liftTerm.unliftLift1Term notFreeInLiftTerm
-                                  )
-      | atomic r terms =>
-        pre _
-          *>
-        pmap (atomic r)
-            (ext $ ext (\lam j =>
-                pmap (Rename.renameTermFree _ __) (ext (\lam v free => \case \elim v, \elim free \with {
-                  | 0, free => idp
-                  | suc v, free => idp
-                }))
-                  *>
-                (inv $ \peval liftTerm.unliftTerm1 (Rename.renameTerm (terms j) fsuc) _)
-                  *>
-                inv (liftTerm.unliftTerm1Path (\peval liftTerm 1 (terms j)) notFreeInLiftTerm)
-                  *>
-                liftTerm.unliftLift1Term notFreeInLiftTerm
-            ))
-      | notH f => pre _ *> pmap notH
-                               (
-                                 pmap (Rename.renameFree _ __) (ext (\lam v free => \case \elim v, \elim free \with {
-                                   | 0, free => idp
-                                   | suc v, free => idp
-                                 }))
-                                   *>
-                                 (inv $ \peval unliftFormula1 (Rename.rename f fsuc) _)
-                                   *>
-                                 inv (unliftFormula1Path (\peval liftFormula 1 f) notFreeInLift)
-                                   *>
-                                 unliftLift1
-                               )
-      | impH f f' => pre _ *> pmap2 impH
-                                  (
-                                    pmap (Rename.renameFree _ __) (ext (\lam v free => \case \elim v, \elim free \with {
-                                      | 0, free => idp
-                                      | suc v, free => idp
-                                    }))
-                                      *>
-                                    (inv $ \peval unliftFormula1 (Rename.rename f fsuc) _)
-                                      *>
-                                    inv (unliftFormula1Path (\peval liftFormula 1 f) notFreeInLift)
-                                      *>
-                                    unliftLift1
-                                  )
-                                  (
-                                    pmap (Rename.renameFree _ __) (ext (\lam v free => \case \elim v, \elim free \with {
-                                      | 0, free => idp
-                                      | suc v, free => idp
-                                    }))
-                                      *>
-                                    (inv $ \peval unliftFormula1 (Rename.rename f' fsuc) _)
-                                      *>
-                                    inv (unliftFormula1Path (\peval liftFormula 1 f') notFreeInLift)
-                                      *>
-                                    unliftLift1
-                                  )
-      | cAnd f f' => pre _ *> pmap2 cAnd
-                                  (
-                                    pmap (Rename.renameFree _ __) (ext (\lam v free => \case \elim v, \elim free \with {
-                                      | 0, free => idp
-                                      | suc v, free => idp
-                                    }))
-                                      *>
-                                    (inv $ \peval unliftFormula1 (Rename.rename f fsuc) _)
-                                      *>
-                                    inv (unliftFormula1Path (\peval liftFormula 1 f) notFreeInLift)
-                                      *>
-                                    unliftLift1
-                                  )
-                                  (
-                                    pmap (Rename.renameFree _ __) (ext (\lam v free => \case \elim v, \elim free \with {
-                                      | 0, free => idp
-                                      | suc v, free => idp
-                                    }))
-                                      *>
-                                    (inv $ \peval unliftFormula1 (Rename.rename f' fsuc) _)
-                                      *>
-                                    inv (unliftFormula1Path (\peval liftFormula 1 f') notFreeInLift)
-                                      *>
-                                    unliftLift1
-                                  )
-      | forAllH f => pre _ *> pmap forAllH
-                                  (
-                                    (
-                                      \let
-                                        | foo => \peval liftFormula 1 f
-                                      \in {?}
-                                    )
-                                      *>
-                                    (inv $ \peval unliftFormula1 (Rename.rename f fsuc) _)
-                                      *>
-                                    inv (unliftFormula1Path (\peval liftFormula 1 f) notFreeInLift)
-                                      *>
-                                    unliftLift1
-                                  )
-      | cExists f => {?}
+    \func unliftFormula1 {_ : Language} {c : Context}
+                         (f : Formula (suc c))
+                         (h : Not (FreeInFormula f 0))
+      : Formula c => Rename.renameFree f (renameFunction h)
       \where {
-        -- TODO: find better lemmata, the term/formula equations are horrendous due to sfunc, but with func I couldn't find
-        -- the path
+        \func renameFunction {_ : Language} {c : Context} {f : Formula (suc c)} (h : Not (FreeInFormula f 0)) : RenameFree (suc c) c f =>
+          \lam (v : Fin (suc c)) free => \case \elim v, \elim free \with {
+            | 0, free => absurd $ h free
+            | suc v, _ => v
+          }
 
-        \private \meta pre f => unliftFormula1Path (\peval liftFormula 1 f) _ *> (\peval unliftFormula1 _ _)
-
-        \private \func stepHelper
-          {_ : Language} {c : Context} {f : Formula (suc c)}
-          (r : RenameFree (suc (suc c)) (suc c) (Rename.rename f (Extend.extend fsuc)))
-          (r' : RenameFree (suc (suc c)) (suc c) (Rename.rename f fsuc))
-          :
-        Rename.renameFree (Rename.rename f (Extend.extend fsuc)) r = {Formula (suc c)}
-        Rename.renameFree (Rename.rename f fsuc) r'
-        => {?}
+        \func irrelevant {_ : Language} {c : Context} {f f' : Formula (suc c)}
+                         {h : Not (FreeInFormula f 0)} {h' : Not (FreeInFormula f' 0)}
+                         (p : f = f')
+          : unliftFormula1 f h = unliftFormula1 f' h' \elim p
+          | idp => pmap (unliftFormula1 f) ext
       }
 
-    \func liftUnlift1 {_ : Language} {c : Context}
-                      {f : Formula (suc c)} (h : Not (FreeInFormula f 0))
-      : liftFormula 1 (unliftFormula1 f h) = f =>
-      {?}
+    \func unliftLift {_ : Language} {c : Context} {f : Formula (suc c)} {g : Formula c}
+                     (p : f = liftFormula 1 g) (h : Not (FreeInFormula f 0)) : g = unliftFormula1 f h
+    \elim p
+      | idp => inv (helper h)
+      \where {
+        \private \func helper {_ : Language} {c : Context} {g : Formula c}
+                              (h : Not (FreeInFormula (Rename.rename g fsuc) 0))
+          : Rename.renameFree (Rename.rename g fsuc) (unliftFormula1.renameFunction h) = g =>
+            Rename.renameFree.composeWithRename *> Rename.renameFree.id (\lam _ _ => idp)
+      }
   }

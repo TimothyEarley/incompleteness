@@ -1,14 +1,9 @@
 \import Data.Fin
 \import Function.Meta
-\import Paths
-\import Paths.Meta
 \import syntax.Context
 \import syntax.Substitution
-\import syntax.SubstitutionReverse
 \import syntax.Syntax
 \import syntax.lift.LiftFormula
-\import syntax.lift.LiftTerm
-\import syntax.lift.LiftVar
 \import util.SetUtil
 \open Nat (+)
 
@@ -16,39 +11,12 @@
 -- TODO Misc stuff to move/cleanup
 
 -- TODO replace with unlift?
-
 \func reverseLift {_ : Language} {c : Context} {f : Formula c} (dummy : Term c)
-  : Substitution.substitute (liftFormula 1 f) (reverse1S dummy) = f =>
-  rewrite (\peval liftFormula _ _) $ reverseRename (\lam v => liftFin {1} v) (reverse1S dummy) (\lam _ => reverseTerm)
-  \where {
-    \func reverse1S {_ : Language} {c : Context} (dummy : Term c) : Substitution (suc c) c =>
-      \lam v => \case \elim v \with {
-        | 0 => dummy
-        | suc v => var v
-      }
-
-    \func reverseTerm  {_ : Language} {c : Context} {t dummy : Term c} :
-      Substitution.substituteTerm (Rename.renameTerm t fsuc) (reverse1S dummy) = t
-    \elim t
-      | var v => idp
-      | apply f args => pmap (apply f) (ext $ ext (\lam j => reverseTerm {_} {c} {args j}))
-  }
+  : Substitution.substitute (liftFormula 1 f) {?} = f =>
+  {?}
 
 \func liftTheory {_ : Language} {delta c : Context} (T : Theory c) : Theory (delta + c) =>
   mapSet T (\lam f _ => liftFormula delta f)
-
-\func subsituteLiftTerm1S {_ : Language} {c c' : Context} {t : Term c} {s : Substitution (suc c) c'}
-  : Substitution.substituteTerm (liftTerm {_} 1 t) s = Substitution.substituteTerm t (\lam v => s (fsuc v))
-\elim t
-  | var v => rewrite (\peval liftTerm 1 (var v)) idp
-  | apply f args => rewrite (\peval liftTerm 1 (apply f args)) $ pmap (apply f) (ext $ ext $ (\lam j => rewriteI (\peval liftTerm 1 (args j)) $ subsituteLiftTerm1S))
-
-\func subsituteLiftTerm1 {_ : Language} {c : Context} {t t' : Term c}
-  : Substitution.substituteTerm (liftTerm {_} 1 t) (Substitution.substOne t') = t =>
-  subsituteLiftTerm1S *> Substitution.substituteTerm.id
-
-\func subsituteLiftTerm1' {_ : Language} {c : Context} {t t' : Term c}
-  : Substitution.substituteTerm (Rename.renameTerm t fsuc) (Substitution.substOne t') = t => rewriteI (\peval liftTerm 1 t) subsituteLiftTerm1
 
 -- pad is the opposite of lift, instead of adding context at the end and thus increasing
 -- the existing, pad adds prior past context to the start and thus does nothing akin

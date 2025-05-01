@@ -1,7 +1,6 @@
 \import Consistent
 \import Logic
 \import Representation
-\import proof.PrfCompleteness
 \import proof.Proof
 \import syntax.Context
 \import syntax.Syntax

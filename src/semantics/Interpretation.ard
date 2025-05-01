@@ -10,6 +10,7 @@
 \import syntax.lift.Lift
 \import syntax.Substitution
 \import syntax.Syntax
+\import syntax.lift.LiftFormula
 \import util.SetUtil
 \open Context (variable)
 \open Nat (+)
@@ -141,22 +142,10 @@
           }
 
         -- TODO: show this without dummy?
-
         \func lifted {_ : Language} {c : Context} {I : Interpretation c} {f : Formula c}
                      {u : I.structure.Universe}
                      (m : I ⊧ f) (dummy : Term c)
-          : extend I u ⊧ liftFormula 1 f => fromSub.substitutionLemma->
-            {_}
-            {suc c} {c} {liftFormula 1 f}
-            I {extend I u} {reverseLift.reverse1S dummy}
-            (\lam v free => \case \elim v, \elim free \with {
-              | 0, free => absurd $ notFreeInLift free
-              | suc f1, free => idp
-            })
-            (transportInv (I ⊧ __) (reverseLift dummy) m)
-          \where {
-
-          }
+          : extend I u ⊧ liftFormula 1 f => {?}
       }
 
     \func modelsAllAxioms \alias \infix 6 ⊧A {_ : Language} {c : Context} (interp : Interpretation c) (Phi : Theory c) : \Prop =>

@@ -1,22 +1,22 @@
 \import Data.Fin
+\import Function.Meta
 \import Logic
 \import Logic.Meta
 \import Meta
 \import Paths.Meta
-\import Set.Subset
 \import syntax.Context
 \import syntax.Substitution
 \import syntax.Syntax
 \import syntax.lift.LiftFormula
 \import syntax.lift.LiftTerm
-\import util.SetUtil
+\open Context (variable)
 
-\func FreeInTerm {_ : Language} {c : Context} (t : Term c) (v : Context.variable c) : \Prop
+\func FreeInTerm {_ : Language} {c : Context} (t : Term c) (v : variable c) : \Prop
 \elim t
   | var v1 => v = v1
   | apply f args => ∃ (j : Fin (funArity f)) (FreeInTerm (args j) v)
 
-\func FreeInFormula {_ : Language} {c : Context} (f : Formula c) (v : Context.variable c) : \Prop
+\func FreeInFormula {_ : Language} {c : Context} (f : Formula c) (v : variable c) : \Prop
 \elim f
   | equal a b => FreeInTerm a v || FreeInTerm b v
   | atomic r terms => ∃ (j : Fin (relArity r)) (FreeInTerm (terms j) v)
@@ -26,18 +26,48 @@
   | forAllH f => FreeInFormula f (suc v)
   | cExists f => FreeInFormula f (suc v)
 
+-- variables that are free before renaming are also free afterwards (when remapped)
+
+\func freeInRenameTerm {_ : Language} {c c' : Context} {t : Term c}
+                       {r : Rename c c'}
+                       {v : variable c}
+                       (h : FreeInTerm t v)
+  : FreeInTerm (Rename.renameTerm t r) (r v)
+\elim t, h
+  | var v', idp => idp
+  | apply f args, inP (j, h) => inP (j, freeInRenameTerm h)
+
+-- if a variable is not mapped to during renaming then it cannot be free afterwards
+
 \func notFreeInRenameTerm {_ : Language} {c c' : Context} {t : Term c} {r : Rename c c'}
-                          {v : Context.variable c'}
-                          (h' : \Pi (v' : Context.variable c) -> v /= r v')
+                          {v : variable c'}
+                          (h' : \Pi (v' : variable c) -> v /= r v')
                           (h : FreeInTerm (Rename.renameTerm t r) v)
   : Empty
 \elim t, h
   | var v1, idp => h' v1 idp
   | apply f args, inP (j, free) => notFreeInRenameTerm h' free
 
+\func freeInRename {_ : Language} {c c' : Context} {f : Formula c}
+                       {r : Rename c c'}
+                       {v : variable c}
+                       (h : FreeInFormula f v)
+  : FreeInFormula (Rename.rename f r) (r v)
+  \elim f, h
+    | equal a b, byLeft h => byLeft $ freeInRenameTerm h
+    | equal a b, byRight h => byRight $ freeInRenameTerm h
+    | atomic r1 terms, inP (j, h) => inP (j, freeInRenameTerm h)
+    | notH f, h => freeInRename h
+    | impH a f, byLeft h => byLeft (freeInRename h)
+    | impH a f, byRight h => byRight (freeInRename h)
+    | cAnd a f, byLeft h => byLeft (freeInRename h)
+    | cAnd a f, byRight h => byRight (freeInRename h)
+    | forAllH f, h => freeInRename h
+    | cExists f, h => freeInRename h
+
 \func notFreeInRename {_ : Language} {c c' : Context} {f : Formula c} {r : Rename c c'}
-                      {v : Context.variable c'}
-                      (h' : \Pi (v' : Context.variable c) -> v /= r v')
+                      {v : variable c'}
+                      (h' : \Pi (v' : variable c) -> v /= r v')
                       (h : FreeInFormula (Rename.rename f r) v)
   : Empty
 \elim f, h
@@ -59,31 +89,25 @@
   }) h
 
 \func notFreeInLiftTerm {_ : Language} {c : Context} {t : Term c}
-  (h : FreeInTerm (liftTerm {_} 1 t) 0) : Empty
-  => notFreeInRenameTerm (\lam v' (p : 0 = {Fin (suc c)} suc v') => usingOnly p contradiction)
+                        (h : FreeInTerm (liftTerm {_} 1 t) 0) : Empty =>
+  notFreeInRenameTerm (\lam v' (p : 0 = {Fin (suc c)} suc v') => usingOnly p contradiction)
       (rewrite (\peval liftTerm 1 t) in h)
 
 \func notFreeInLift {_ : Language} {c : Context} {f : Formula c}
                     (h : FreeInFormula (liftFormula 1 f) 0)
   : Empty => notFreeInRename
     (\lam v' (p : 0 = {Fin (suc c)} suc v') => usingOnly p contradiction)
-    (rewrite (\peval liftFormula 1 f) in h)
-
-\func freeVarsFormula {_ : Language} {c : Context} (f : Formula c) : Set (Context.variable c) =>
-  \lam v => FreeInFormula f v
-
-\func freeVars {_ : Language} {c : Context} (T : Theory c) : Set (Context.variable c) =>
-  \lam v => ∃ (f : Formula c) (f ∈ T) (FreeInFormula f v)
+    h
 
 \func RenameFreeTerm {_ : Language} (c c' : Context) (t : Term c) =>
-  \Pi (v : Context.variable c) (FreeInTerm t v) -> Context.variable c'
+  \Pi (v : variable c) (FreeInTerm t v) -> variable c'
   \where {
     \func fromRename {_ : Language} {c c' : Context} (r : Rename c c') {t : Term c} : RenameFreeTerm c c' t =>
       \lam v _ => r v
   }
 
 \func RenameFree {_ : Language} (c c' : Context) (f : Formula c) =>
-  \Pi (v : Context.variable c) (FreeInFormula f v) -> Context.variable c'
+  \Pi (v : variable c) (FreeInFormula f v) -> variable c'
   \where {
     \func fromRename {_ : Language} {c c' : Context} (r : Rename c c') {f : Formula c} : RenameFree c c' f =>
       \lam v _ => r v

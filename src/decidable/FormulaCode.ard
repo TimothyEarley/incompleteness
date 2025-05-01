@@ -115,4 +115,6 @@
       | cAnd a a1, cExists b => no absurd
       | forAllH a, cAnd a1 b => no absurd
       | cExists a, cAnd a1 b => no absurd
+
+    \meta constrInj p => formulaCode-decode $ formulaCode-encode p
 }

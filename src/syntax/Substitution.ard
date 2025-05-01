@@ -44,17 +44,17 @@
     | 0, free => 0
     | suc f1, free => fsuc $ r f1 (freeInCtor f1 free)
   }
-  \where {
-    \func extend= {_ : Language} {c c' : Context} {f : Formula (inc c)}
-                  (ctor : \Pi {d : Context} (Formula (suc d)) -> Formula d)
-                  {r : Rename c c'}
-                  (freeInCtor : \Pi (v : Fin c) (FreeInFormula f (suc v)) -> FreeInFormula (ctor f) v)
-                  : RenameFree.fromRename (Extend.extend r) = Extend.extendFree ctor (RenameFree.fromRename r) freeInCtor
-      => ext $ (\lam v free => \case \elim v, \elim free \with {
-        | 0, free => idp
-        | suc f1, free => idp
-      })
-  }
+    \where {
+      \func extend= {_ : Language} {c c' : Context} {f : Formula (inc c)}
+                    (ctor : \Pi {d : Context} (Formula (suc d)) -> Formula d)
+                    {r : Rename c c'}
+                    (freeInCtor : \Pi (v : Fin c) (FreeInFormula f (suc v)) -> FreeInFormula (ctor f) v)
+        : RenameFree.fromRename (Extend.extend r) = Extend.extendFree ctor (RenameFree.fromRename r) freeInCtor =>
+        ext $ (\lam v free => \case \elim v, \elim free \with {
+          | 0, free => idp
+          | suc f1, free => idp
+        })
+    }
 }
 
 \func Rename {_ : Language} (c c' : Context) => variable c -> variable c'
@@ -84,13 +84,30 @@
     \elim t
       | var v => var $ remap v idp
       | apply f args => apply f (\lam i => renameTermFree (args i) (\lam v free => remap v (inP (i, free))))
-    \where {
-      -- proof that renameTermFree works the same as renameTerm
-      \func renameTerm= {_ : Language} {c c' : Context} {t : Term c} {r : Rename c c'} : renameTerm t r = renameTermFree t (RenameFreeTerm.fromRename r)
+      \where {
+        -- proof that renameTermFree works the same as renameTerm
+
+        \func renameTerm= {_ : Language} {c c' : Context} {t : Term c} {r : Rename c c'} : renameTerm t r = renameTermFree t (RenameFreeTerm.fromRename r)
         \elim t
           | var v => idp
           | apply f args => pmap (apply f) $ ext $ ext (\lam j => renameTerm= {_} {c} {c'} {args j})
-    }
+
+        \func composeWithRename {_ : Language} {c c' c'' : Context} {t : Term c} {r : Rename c c'}
+                                {r' : RenameFreeTerm c' c'' (renameTerm t r)}
+          : renameTermFree (renameTerm t r) r' = renameTermFree t (\lam v free => r' (r v) (freeInRenameTerm free))
+        \elim t
+          | var v => pmap var $ pmap (r' (r v)) $ ext
+          | apply f args => pmap (apply f) $ ext $ ext (\lam j =>
+              composeWithRename {_} {_} {_} {_} {args j}
+          )
+
+        \func id {_ : Language} {c : Context} {t : Term c} {r : RenameFreeTerm c c t}
+          (h : \Pi (v : variable c) (free : FreeInTerm t v) -> r v free = v)
+                 : renameTermFree t r = t
+                 \elim t
+                   | var v => pmap var $ h v idp
+                   | apply f args => pmap (apply f) $ ext $ ext (\lam j => id {_} {c} {args j} (\lam v free => h v (inP (j, free))))
+      }
 
     \func rename {_ : Language} {c c' : Context} (f : Formula c) (r : Rename c c') : Formula c'
     \elim f
@@ -113,19 +130,61 @@
       | cAnd a b => cAnd (renameFree a (\lam v free => r v (byLeft free))) (renameFree b (\lam v free => r v (byRight free)))
       | forAllH f => forAllH $ renameFree f (Extend.extendFree forAllH r (\lam _ f1 => f1))
       | cExists f => cExists $ renameFree f (Extend.extendFree cExists r (\lam _ f1 => f1))
-    \where {
-      -- proof that renameFree works the same as rename
+      \where {
+        -- proof that renameFree works the same as rename
 
-      \func rename= {_ : Language} {c c' : Context} {f : Formula c} {r : Rename c c'} : rename f r = renameFree f (RenameFree.fromRename r)
-      \elim f
-        | equal a b => pmap2 equal renameTermFree.renameTerm= renameTermFree.renameTerm=
-        | atomic r1 terms => pmap (atomic r1) $ ext $ ext (\lam _ => renameTermFree.renameTerm=)
-        | notH f => pmap notH rename=
-        | impH a f => pmap2 impH rename= rename=
-        | cAnd a f => pmap2 cAnd rename= rename=
-        | forAllH f => pmap forAllH (rename= *> pmap (renameFree f) (Extend.extendFree.extend= forAllH (\lam _ f1 => f1)))
-        | cExists f => pmap cExists (rename= *> pmap (renameFree f) (Extend.extendFree.extend= cExists (\lam _ f1 => f1)))
-    }
+        \func rename= {_ : Language} {c c' : Context} {f : Formula c} {r : Rename c c'} : rename f r = renameFree f (RenameFree.fromRename r)
+        \elim f
+          | equal a b => pmap2 equal renameTermFree.renameTerm= renameTermFree.renameTerm=
+          | atomic r1 terms => pmap (atomic r1) $ ext $ ext (\lam _ => renameTermFree.renameTerm=)
+          | notH f => pmap notH rename=
+          | impH a f => pmap2 impH rename= rename=
+          | cAnd a f => pmap2 cAnd rename= rename=
+          | forAllH f => pmap forAllH (rename= *> pmap (renameFree f) (Extend.extendFree.extend= forAllH (\lam _ f1 => f1)))
+          | cExists f => pmap cExists (rename= *> pmap (renameFree f) (Extend.extendFree.extend= cExists (\lam _ f1 => f1)))
+
+        \func composeWithRename {_ : Language} {c c' c'' : Context} {f : Formula c} {r : Rename c c'}
+                                {r' : RenameFree c' c'' (rename f r)}
+          : renameFree (rename f r) r' = renameFree f (\lam v free => r' (r v) (freeInRename free))
+        \elim f
+          | equal a b => pmap2 equal renameTermFree.composeWithRename renameTermFree.composeWithRename
+          | atomic r1 terms => pmap (atomic r1) $ ext $ ext (\lam _ =>
+              renameTermFree.composeWithRename
+          )
+          | notH f => pmap notH composeWithRename
+          | impH a f => pmap2 impH composeWithRename composeWithRename
+          | cAnd a f => pmap2 cAnd composeWithRename composeWithRename
+          | forAllH f => pmap forAllH $ composeWithRename *> pmap (renameFree f)
+                                                                 (ext (\lam v free => \case \elim v, \elim free \with {
+                                                                   | 0, free => idp
+                                                                   | suc f1, free => idp
+                                                                 }))
+          | cExists f => pmap cExists $ composeWithRename *> pmap (renameFree f)
+                                                                 (ext (\lam v free => \case \elim v, \elim free \with {
+                                                                   | 0, free => idp
+                                                                   | suc f1, free => idp
+                                                                 }))
+
+        \func id {_ : Language} {c : Context} {f : Formula c} {r : RenameFree c c f}
+          (h : \Pi (v : variable c) (free : FreeInFormula f v) -> r v free = v)
+          : renameFree f r = f
+          \elim f
+            | equal a b => pmap2 equal
+                (renameTermFree.id (\lam v free => h v (byLeft free)))
+                (renameTermFree.id (\lam v free => h v (byRight free)))
+            | atomic r1 terms => pmap (atomic r1) (ext $ ext (\lam j => renameTermFree.id (\lam v free => h v (inP (j, free)))))
+            | notH f => pmap notH (id h)
+            | impH a f => pmap2 impH (id (\lam v free => h v (byLeft free))) (id (\lam v free => h v (byRight free)))
+            | cAnd a f => pmap2 cAnd (id (\lam v free => h v (byLeft free))) (id (\lam v free => h v (byRight free)))
+            | forAllH f => pmap forAllH (id (\lam (v : variable (suc c)) free => \case \elim v, \elim free \with {
+              | 0, free => idp
+              | suc v, free => pmap fsuc (h v free)
+            }))
+            | cExists f => pmap cExists (id (\lam (v : variable (suc c)) free => \case \elim v, \elim free \with {
+              | 0, free => idp
+              | suc v, free => pmap fsuc (h v free)
+            }))
+      }
 
     \func unrenameTerm {_ : Language} {c c' : Context} {t t' : Term c} {r : Rename c c'}
                        (rInj : \Pi {v v' : variable c} (r v = r v') -> v = v')

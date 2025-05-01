@@ -1,6 +1,7 @@
 \import Data.Fin
 \import Function.Meta
 \import Logic
+\import Meta
 \import Paths
 \import Paths.Meta
 \import syntax.Context
@@ -31,14 +32,14 @@
         }
     }
 
-    \func unliftTerm1Path {_ : Language} {c : Context}
+    \private \func unliftTerm1Path {_ : Language} {c : Context}
                           {t' t : Term (suc c)}
                           (p : t = t')
                           (h : Not (FreeInTerm t 0))
       : unliftTerm1 t h = unliftTerm1 t' (rewriteI p h) \elim p
       | idp => idp
 
-    \func unliftLift1Term {_ : Language} {c : Context}
+    \private \func unliftLift1Term {_ : Language} {c : Context}
                           {t : Term c}
                           (h : Not (FreeInTerm (liftTerm {_} 1 t) 0))
       : unliftTerm1 (liftTerm {_} 1 t) h = {Term c} t
@@ -68,4 +69,13 @@
 
               *> (inv $ \peval unliftTerm1 _ _) *> q' *>  r
         ))
+
+    \private \func swapLift {_ : Language} {c : Context} {t : Term (suc c)} {t' : Term c}
+                   (p : t = liftTerm 1 t') (h : Not (FreeInTerm t 0)) : t' = unliftTerm1 t h
+      \elim p
+        | idp => inv $ unliftLift1Term h
+
+    \func swapLift' {_ : Language} {c : Context} {t : Term (suc c)} {t' : Term c}
+                   (p : t = Rename.renameTerm t' (liftFin {1})) (h : Not (FreeInTerm t 0)) : t' = unliftTerm1 t h
+      => swapLift (rewriteI (\peval liftTerm 1 t') in p) h
   }

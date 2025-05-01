@@ -1,24 +1,14 @@
-\import Algebra.Meta
 \import Function.Meta
-\import Logic
-\import Logic.Meta
-\import Meta
 \import NaturalNumberTheory.NN
-\import NaturalNumberTheory.NNModel
 \import NaturalNumberTheory.NN_Coding
 \import Paths
-\import Paths.Meta
 \import PrimRec
 \import semantics.Interpretation
-\import syntax.Context
-\import syntax.lift.Lift
 \import syntax.Substitution
 \import syntax.Syntax
 \open NN_Coding (natTerm)
 \open LNN_Syntax (Succ, Zero)
 \open Interpretation
-\open FormulaExtensions
-\open Context (variable)
 
 \func representPrimRec {n : Nat} (p : PrimRec n) : Formula {LNN} (suc n)
 \elim n, p
@@ -40,22 +30,23 @@
     -- ∃ r_1, ..., r_m . (f / m0 r_1 ... r_m) ∧ (fs_1 / r_1 args_1 ... args_n) ∧ ... ∧ (fs_m / r_m args_1 ... args_n)
 
     \func representCompose {n : Nat} (m : Nat) (f : Formula (suc m)) (fs : Array (Formula (suc n)) m) : Formula (suc n) =>
-      \let
-        -- context of f: m0 args'_1 ... args'_m
-        -- context of f': m0 args_1 ... args_m r_1 ... r_m
-        -- so map m0 to m0, and shift the rest so that r_1 ... r_m are the args
-        | f' : Formula (suc (m Nat.+ n)) => Substitution.substitute f (\lam v => \case \elim v \with {
-          | 0 => #0
-          | suc v => liftTerm {_} {suc m} {?r_v} -- r_v
-        })
-        -- context of fs i: r_i args'_1 ... args'_m
-        -- context of fs': m0 args_1 ... args_m r_1 ... r_m
-        | fs' : Array (Formula (suc (m Nat.+ n))) =>
-          \lam i => Substitution.substitute (fs i) (\lam v => \case \elim v \with {
-            | 0 => {?r_i} -- r_i
-            | suc v => {?args} -- args_v
-          })
-      \in cExists' m $ cAnd f' (cAndH' fs')
+      {?}
+--       \let
+--         -- context of f: m0 args'_1 ... args'_m
+--         -- context of f': m0 args_1 ... args_m r_1 ... r_m
+--         -- so map m0 to m0, and shift the rest so that r_1 ... r_m are the args
+--         | f' : Formula (suc (m Nat.+ n)) => Substitution.substitute f (\lam v => \case \elim v \with {
+--           | 0 => #0
+--           | suc v => liftTerm {_} {suc m} {?r_v} -- r_v
+--         })
+--         -- context of fs i: r_i args'_1 ... args'_m
+--         -- context of fs': m0 args_1 ... args_m r_1 ... r_m
+--         | fs' : Array (Formula (suc (m Nat.+ n))) =>
+--           \lam i => Substitution.substitute (fs i) (\lam v => \case \elim v \with {
+--             | 0 => {?r_i} -- r_i
+--             | suc v => {?args} -- args_v
+--           })
+--       \in cExists' m $ cAnd f' (cAndH' fs')
 
     \func representCompose= {n m : Nat} {f : PrimRec m} {fs : Array (PrimRec n) m}
       : representPrimRec (ComposeFun m f fs) = representCompose m (representPrimRec f) (\lam i => representPrimRec (fs i))
@@ -66,37 +57,38 @@
 
     \func correct {n result : Nat} {p : PrimRec n} {args : Array Nat n}
                   (h : NN ⊧I (Substitution.substitute (representPrimRec p) (natTerm result :: (\lam v => natTerm $ args v)))) : evalPrimRec p args = result
-    \elim n, p, args
-      | 0, ZeroFunc, nil => inv (h NNInterpretation modelsNN) *> evalNatTerm
-      | 1, SuccFunc, x :: nil => inv $ inv evalNatTerm *> h NNInterpretation modelsNN *> pmap suc evalNatTerm
-      | n, ProjFunc index, args =>
-        \let
-          -- only tricky because the cases to not eliminate automatically to the ProjFunc case
-          | h' => h NNInterpretation modelsNN
-          | h'' => transport (\lam z => NNInterpretation ⊧ Substitution.substitute z (natTerm result :: \new Array (Term 0) n (\lam v => natTerm (args v)))) representProj= h'
-          | h''' => inv evalNatTerm *> h'' *> evalNatTerm
-          | goal : evalPrimRec (ProjFunc index) args = result => rewrite (evalPrimRec.evalProj {n}) $ inv h'''
-        \in goal
-      | n, ComposeFun m f fs, args =>
-        \let
-          | h' =>
-            rewrite SubstituteExtensions.subsituteCExists' in
-            unfold representCompose in
-            transport (\lam z => NN ⊧I (Substitution.substitute z _)) representCompose= h
-          | realInModel => InterprreteExtensions.modelsCExists' $ h' NNInterpretation modelsNN
-        \in hiding h \case \elim realInModel \with {
-          | inP (args', (f'M, fs'M)) =>
-            \let
-              | f'M2 => rewrite Substitution.substitute.compose in f'M
-
-              | f'c => correct {m} {result} {f} {args'} (\lam I ImodelsNN =>
-                  \let
-                    | foo => {?}
-                  \in {?}
-              )
-              | fs'c => \lam (i : Fin m) => correct {n} {args' i} {fs i} {args} {?}
-            \in evalPrimRec.evalCompose *> pmap (evalPrimRec f) (ext $ ext fs'c) *> f'c
-        }
+      => {?}
+--     \elim n, p, args
+--       | 0, ZeroFunc, nil => inv (h NNInterpretation modelsNN) *> evalNatTerm
+--       | 1, SuccFunc, x :: nil => inv $ inv evalNatTerm *> h NNInterpretation modelsNN *> pmap suc evalNatTerm
+--       | n, ProjFunc index, args =>
+--         \let
+--           -- only tricky because the cases to not eliminate automatically to the ProjFunc case
+--           | h' => h NNInterpretation modelsNN
+--           | h'' => transport (\lam z => NNInterpretation ⊧ Substitution.substitute z (natTerm result :: \new Array (Term 0) n (\lam v => natTerm (args v)))) representProj= h'
+--           | h''' => inv evalNatTerm *> h'' *> evalNatTerm
+--           | goal : evalPrimRec (ProjFunc index) args = result => rewrite (evalPrimRec.evalProj {n}) $ inv h'''
+--         \in goal
+--       | n, ComposeFun m f fs, args =>
+--         \let
+--           | h' =>
+--             rewrite SubstituteExtensions.subsituteCExists' in
+--             unfold representCompose in
+--             transport (\lam z => NN ⊧I (Substitution.substitute z _)) representCompose= h
+--           | realInModel => InterprreteExtensions.modelsCExists' $ h' NNInterpretation modelsNN
+--         \in hiding h \case \elim realInModel \with {
+--           | inP (args', (f'M, fs'M)) =>
+--             \let
+--               | f'M2 => rewrite Substitution.substitute.compose in f'M
+--
+--               | f'c => correct {m} {result} {f} {args'} (\lam I ImodelsNN =>
+--                   \let
+--                     | foo => {?}
+--                   \in {?}
+--               )
+--               | fs'c => \lam (i : Fin m) => correct {n} {args' i} {fs i} {args} {?}
+--             \in evalPrimRec.evalCompose *> pmap (evalPrimRec f) (ext $ ext fs'c) *> f'c
+--         }
 
     \func complete {n : Nat} {p : PrimRec n} {args : Array Nat n}
       : NN Interpretation.⊧I Substitution.substitute (representPrimRec p) (natTerm (evalPrimRec p args) :: (\lam v => natTerm $ args v))
