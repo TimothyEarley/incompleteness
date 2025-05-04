@@ -143,6 +143,13 @@
     : mapSet S (\lam x _ => f x) ⊆ mapSet S' (\lam x _ => f x) => \case \elim __ \with {
     | inP (x, e, p) => inP (x, sub e, p)
   }
+
+  \func mapSetSubst {X Y : \Set} {S S' : Set X} {f : X -> Y}
+                    (sub : mapSet S (\lam x _ => f x) ⊆ mapSet S' (\lam x _ => f x))
+                    (fInj : \Pi {x x' : X} (f x = f x') -> x = x')
+    : S ⊆ S' => \lam {x} s => \case sub {f x} (inP (x, s, idp)) \with {
+    | inP (x', x'S', f=) => transportInv S' (fInj f=) x'S'
+  }
 }
 
 \module FinSets \where {
@@ -226,22 +233,26 @@
 
   \func FinMap {X Y : DecSet} {S : Set X} (h : FinSet (Elements S))
                (f : \Pi (x : X) (e : x ∈ S) -> Y)
-               (fIgnoresE : \Pi (x : X) (e e' : x ∈ S) -> f x e = f x e')
     : FinSet (Elements (mapSet S f)) => \case finToArray h \with {
     | inP (a, p) =>
       \let
         | S' => mapSet (setOfArray a) (\lam x e => f x $ rewrite p e)
         | p' : mapSet S f = S' => ext (\lam _ => ext (
           \case \elim __ \with {
-            | inP (x, e, q) => inP (x, rewriteI p e, q *> fIgnoresE x _ _)
+            | inP (x, e, q) => inP (x, rewriteI p e, q *> fIgnoresE S e _)
           },
           \case \elim __ \with {
-            | inP (x, e, q) => inP (x, rewrite p e, q *> fIgnoresE x _ _)
+            | inP (x, e, q) => inP (x, rewrite p e, q)
           }
         ))
       \in rewrite p' $ FinMap' _
   }
     \where {
+      \func fIgnoresE {X Y : \Set} (S : Set X)
+                      {f : \Pi (x : X) (e : x ∈ S) -> Y}
+        : \Pi {x : X} (e e' : x ∈ S) -> f x e = f x e'
+        => \lam e e' => \let p : e = e' => ext \in rewrite p idp
+
       \func FinMap' {X : \Set} {Y : DecSet} {n : Nat} {a : Array X n}
                     (f : \Pi (x : X) (x ∈ setOfArray a) -> Y)
         : FinSet (Elements (mapSet (setOfArray a) f)) =>

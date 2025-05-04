@@ -7,8 +7,10 @@
 \import syntax.Context
 \import syntax.Substitution
 \import syntax.Syntax
+\import syntax.lift.Lift
 \import syntax.lift.LiftFormula
 \import syntax.lift.LiftTerm
+\import util.SetUtil
 \open Context (variable)
 
 \func FreeInTerm {_ : Language} {c : Context} (t : Term c) (v : variable c) : \Prop
@@ -98,6 +100,11 @@
   : Empty => notFreeInRename
     (\lam v' (p : 0 = {Fin (suc c)} suc v') => usingOnly p contradiction)
     h
+\where {
+  \func fromLiftTheory {_ : Language} {c : Context} {f : Formula (suc c)} {T : Theory c}
+    (hEl : f ∈ liftTheory {_} {1} T) (h : FreeInFormula f 0) : Empty \elim hEl
+    | inP (x,e,idp) => notFreeInLift h
+}
 
 \func RenameFreeTerm {_ : Language} (c c' : Context) (t : Term c) =>
   \Pi (v : variable c) (FreeInTerm t v) -> variable c'

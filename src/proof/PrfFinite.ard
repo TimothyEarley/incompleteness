@@ -1,5 +1,7 @@
+\import Data.Fin
 \import Function.Meta
 \import Logic
+\import Meta
 \import Paths
 \import Paths.Meta
 \import Set
@@ -183,13 +185,36 @@
         (FinSet (Elements axioms'))
         (Prf axioms' (forAllH f)) =>
       \let
+        -- first recursively get the axioms for proving f in the extended context
         | rec => prfFinite prf
+        -- those axioms in the recursive call can the be equated to something in this context
         | (S', h) => extractFromSubsetLifted rec.2
+        | sub => rewrite h in rec.2
+        | fin => rewrite h in rec.3
+        -- to make the finite proof fit the definition of FinSets.FinMap we do an addional map of the lifted axioms
+        -- back to the unlifted axioms. S'' = S' proves the lift + unlift cancels out
+        | S'' => mapSet {Formula (suc c)} {Formula c} (liftTheory {_} {1} S') (\lam x e => liftFormula.unliftFormula1 x (notFreeInLift.fromLiftTheory e))
+        | S''fin : FinSet (Elements S'') => FinSets.FinMap fin _
+        | S''=S' : S'' = S' => ext $ (\lam g => ext (
+          \case \elim g, \elim __ \with {
+            | _, inP (_, inP (x', e', idp), idp) =>
+              \let foo => liftFormula.unliftLift {_} {_} {liftFormula 1 x'} idp notFreeInLift
+              \in rewriteI foo e'
+          },
+          \case \elim g, \elim __ \with {
+            | _, inP (x, e, idp) =>
+              \let
+                | h1 : Not (FreeInFormula x 0) => \case (prfFinite prf).2 e \with {
+                  | inP (x1, _, p) => transportInv (\lam x0 => Not (FreeInFormula x0 0)) p notFreeInLift
+                }
+              \in inP (x, rewriteI h e, liftFormula.unliftFormula1.irrelevant {_} {_} {_} {_} {_} {h1} idp)
+          }
+        ))
       \in (
         S',
-        {?},
-        {?},
-        forAllIntro f {?} idp
+        SubsetHelper.mapSetSubst sub (Rename.unrename unfsuc __),
+        rewriteI S''=S' S''fin,
+        forAllIntro f (rewrite h in rec.4) idp
       )
 
     \private \func extractFromSubsetLifted {_ : Language} {c : Context} {S : Theory (suc c)} {T : Theory c} (h : S ⊆ liftTheory {_} {1} T)
@@ -205,7 +230,7 @@
              | inP (_, inP (x', e', idp), p) => \case h e' \with {
                | inP (_, _, p'') =>
                  \let
-                    | nf : Not (FreeInFormula x' 0) => rewrite p'' notFreeInLift
+                   | nf : Not (FreeInFormula x' 0) => rewrite p'' notFreeInLift
                    | q => liftFormula.liftUnlift nf p
                  \in transport S q e'
              }
