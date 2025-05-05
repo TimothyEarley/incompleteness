@@ -17,7 +17,7 @@
 \open Nat (+)
 
 \module Extend \where {
-  \func extend {_ : Language} {c c' : Context} (remap : Rename c c') : Rename (inc c) (inc c') =>
+  \func extend {c c' : Context} (remap : Rename c c') : Rename (inc c) (inc c') =>
     \lam v => \case v \with {
       | 0 => 0
       | suc f1 => fsuc $ remap f1
@@ -57,7 +57,7 @@
     }
 }
 
-\func Rename {_ : Language} (c c' : Context) => variable c -> variable c'
+\func Rename (c c' : Context) => variable c -> variable c'
   \where {
     \func renameTerm {_ : Language} {c c' : Context} (t : Term c) (remap : variable c -> variable c') : Term c'
     \elim t

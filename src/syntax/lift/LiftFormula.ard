@@ -1,3 +1,4 @@
+\import Data.Fin
 \import Function.Meta
 \import Logic
 \import Paths
@@ -50,4 +51,15 @@
           | 0, free => absurd (h free)
           | suc v, free => idp
         })
+
+    \func liftFormula1At {_ : Language} {c : Context} (f : Formula c) (at : Fin (suc c)) : Formula (suc c)
+      => Rename.rename f (\lam v => liftFin1At at v)
+    \where {
+      \func at0 {_ : Language} {c : Context} {f : Formula c} : liftFormula 1 f = liftFormula1At f 0
+        => pmap (Rename.rename f) (ext (\lam _ => inv liftFin1At.at0))
+
+      \func atSuc {_ : Language} {c : Context} {f : Formula (suc c)} {at : Fin (suc c)}
+        : liftFormula1At f (fsuc at) = Rename.rename f (Extend.extend (liftFin1At at))
+        => pmap (Rename.rename f) (ext (\lam _ => liftFin1At.atSuc))
+    }
   }

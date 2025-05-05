@@ -1,19 +1,11 @@
 \import Data.Fin
 \import Function.Meta
 \import syntax.Context
-\import syntax.Substitution
 \import syntax.Syntax
 \import syntax.lift.LiftFormula
 \import util.SetUtil
 \open Nat (+)
 
-
--- TODO Misc stuff to move/cleanup
-
--- TODO replace with unlift?
-\func reverseLift {_ : Language} {c : Context} {f : Formula c} (dummy : Term c)
-  : Substitution.substitute (liftFormula 1 f) {?} = f =>
-  {?}
 
 \func liftTheory {_ : Language} {delta c : Context} (T : Theory c) : Theory (delta + c) =>
   mapSet T (\lam f _ => liftFormula delta f)

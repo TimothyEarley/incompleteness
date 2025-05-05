@@ -1,3 +1,4 @@
+\import Data.Array (insert, insert_zro)
 \import Data.Fin
 \import Function.Meta
 \import Logic
@@ -11,6 +12,7 @@
 \import syntax.Substitution
 \import syntax.Syntax
 \import syntax.lift.LiftFormula
+\import syntax.lift.LiftVar
 \import util.SetUtil
 \open Context (variable)
 \open Nat (+)
@@ -32,6 +34,18 @@
       | variableValues v => \case \elim v \with {
         | 0 => u
         | suc v => interp.variableValues v
+      }
+
+    \func extendAt {_ : Language} {c : Context} (I : Interpretation c) (u : I.structure.Universe) (at : Fin (suc c))
+      : Interpretation (suc c) I.structure \cowith
+      | variableValues => insert u I.variableValues at
+      \where {
+        \func at0 {_ : Language} {c : Context} {I : Interpretation c} {u : I.structure.Universe}
+          : extend I u = extendAt I u 0 => ext $ ext (\lam _ => unfold (rewrite insert_zro (mcases idp)))
+
+        \func atSuc {_ : Language} {c : Context} {I : Interpretation c} {u u' : I.structure.Universe}
+                    {at : Fin (suc c)} : extend (extendAt I u at) u' = extendAt (extend I u') u (suc at) =>
+          ext $ ext (\lam _ => unfold $ mcases idp)
       }
 
     \func extend' {_ : Language} {c : Context} (I : Interpretation c) {n : Nat} (us : Array I.structure.Universe n)
@@ -144,12 +158,78 @@
               | apply f1 args => pmap (fun f1) (ext $ ext (\lam j => evaluateSubstituteTerm {_} {c} {c'} {args j} I hI'))
           }
 
-        -- TODO: show this without dummy?
-
         \func lifted {_ : Language} {c : Context} {I : Interpretation c} {f : Formula c}
                      {u : I.structure.Universe}
-                     (m : I ⊧ f) (dummy : Term c)
-          : extend I u ⊧ liftFormula 1 f => {?}
+                     (m : I ⊧ f)
+          : extend I u ⊧ liftFormula 1 f =>
+          transport2
+              (⊧)
+              (inv extendAt.at0)
+              (inv liftFormula.liftFormula1At.at0)
+              (ignoresNotFree m)
+          \where {
+            -- very similar to substitution lemma, as lifting is just a rename which is a limited subsitution.
+            -- TODO: could this be proven just by calling subsitution lemma?
+
+            \private \func lookup {X : \Set} {x : X} {n : Nat} {l : Array X n} {at : Fin (suc n)} {i : Fin n}
+              : insert x l at (liftFin1At at i) = l i
+            \elim n, l, at, i
+              | suc n, a :: l, 0, 0 => idp
+              | suc n, a :: l, 0, suc i => idp
+              | suc n, a :: l, suc at, 0 => idp
+              | suc n, a :: l, suc at, suc i => lookup
+
+            \private \func evaluateLifted {_ : Language} {c : Context} {I : Interpretation c}
+                                          {u : I.structure.Universe} {at : variable (suc c)} {t : Term c}
+              : evaluate (extendAt I u at) (Rename.renameTerm t (liftFin1At at)) = evaluate I t
+            \elim t
+              | var v => lookup
+              | apply f args => pmap (fun f) (ext $ ext (\lam j => evaluateLifted {_} {_} {_} {_} {_} {args j}))
+
+            \func ignoresNotFree {_ : Language} {c : Context} {I : Interpretation c} {f : Formula c}
+                                 {u : I.structure.Universe} {v : variable (suc c)}
+                                 (m : I ⊧ f)
+              : (extendAt I u v) ⊧ (liftFormula.liftFormula1At f v)
+            \elim f
+              | equal a b => evaluateLifted *> m *> inv evaluateLifted
+              | atomic r terms => transport (rel r) (ext $ ext (\lam _ => inv evaluateLifted)) m
+              | notH f => \lam m1 => m $ ignoresNotFreeRev m1
+              | impH f g => \lam m1 => ignoresNotFree (m $ ignoresNotFreeRev m1)
+              | cAnd f g => (ignoresNotFree m.1, ignoresNotFree m.2)
+              | forAllH f => \lam u' =>
+                  transport2 (⊧)
+                      (inv extendAt.atSuc)
+                      liftFormula.liftFormula1At.atSuc
+                      (ignoresNotFree {_} {suc c} {extend I u'} {f} {u} {fsuc v} (m u'))
+              | cExists f => \case \elim m \with {
+                | inP (u', m') => inP (
+                  u',
+                  transport2 (⊧)
+                      (inv extendAt.atSuc)
+                      liftFormula.liftFormula1At.atSuc
+                      (ignoresNotFree {_} {_} {extend I u'} {f} {u} {fsuc v} m')
+                )
+              }
+
+            \func ignoresNotFreeRev {_ : Language} {c : Context} {I : Interpretation c} {f : Formula c}
+                                    {u : I.structure.Universe} {v : variable (suc c)}
+                                    (m : (extendAt I u v) ⊧ (liftFormula.liftFormula1At f v))
+              : I ⊧ f
+            \elim f
+              | equal a b => inv evaluateLifted *> m *> evaluateLifted
+              | atomic r terms => transport (rel r) (ext $ ext (\lam _ => evaluateLifted)) m
+              | notH f => \lam m1 => m $ ignoresNotFree m1
+              | impH f g => \lam m1 => ignoresNotFreeRev (m $ ignoresNotFree m1)
+              | cAnd f g => (ignoresNotFreeRev m.1, ignoresNotFreeRev m.2)
+              | forAllH f => \lam u' =>
+                  ignoresNotFreeRev (transport2 (⊧) extendAt.atSuc (inv liftFormula.liftFormula1At.atSuc) (m u'))
+              | cExists f => \case \elim m \with {
+                | inP (u', m') => inP (
+                  u',
+                  ignoresNotFreeRev (transport2 (⊧) extendAt.atSuc (inv liftFormula.liftFormula1At.atSuc) m')
+                )
+              }
+          }
       }
 
     \func modelsAllAxioms \alias \infix 6 ⊧A {_ : Language} {c : Context} (interp : Interpretation c) (Phi : Theory c) : \Prop =>
@@ -167,9 +247,8 @@
         \func lifted {_ : Language} {c : Context} {I : Interpretation c} {Phi : Theory c}
                      {u : I.structure.Universe}
                      (m : I ⊧A Phi)
-                     (dummy : Term c)
           : extend I u ⊧A liftTheory {_} {1} Phi =>
-          \lam {_} (inP (f, fPhi, idp)) => ⊧.lifted (m fPhi) dummy
+          \lam {_} (inP (f, fPhi, idp)) => ⊧.lifted (m fPhi)
       }
 
     \func implies \alias \infix 6 ⊧I {_ : Language} {c : Context} (Phi : Theory c) (phi : Formula c) =>

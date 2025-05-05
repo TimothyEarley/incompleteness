@@ -1,6 +1,7 @@
 \import Data.Fin
 \import Function.Meta
 \import Paths
+\import syntax.Substitution
 \open Nat (+)
 
 
@@ -24,4 +25,24 @@
     \elim delta
       | 0 => p
       | suc delta => \let p' => unfsuc p \in unliftFinPath p'
+  }
+
+-- does a lift as above, but only starting at "at"
+\func liftFin1At {n : Nat} (at : Fin (suc n)) (i : Fin n) : Fin (suc n)
+  \elim n, at, i
+    | suc n, 0, i => fsuc i
+    | suc n, suc at, 0 => 0
+    | suc n, suc at, suc i => fsuc (liftFin1At at i)
+  \where {
+  \func at0 {n : Nat} {i : Fin n} : liftFin1At 0 i = fsuc i \elim n, i
+    | suc n, 0 => idp
+    | suc n, suc i => idp
+
+  \func atSuc {n : Nat} {at : Fin (suc n)} {v : Fin (suc n)} :
+    liftFin1At (fsuc at) v = Extend.extend (liftFin1At at) v
+    \elim n, at, v
+      | n, 0, 0 => idp
+      | n, 0, suc v => idp
+      | n, suc at, 0 => idp
+      | n, suc at, suc v => idp
   }
