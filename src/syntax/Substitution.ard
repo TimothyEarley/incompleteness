@@ -302,7 +302,7 @@
 
     -- TODO: this proof seems very complicated. What is the general principle?
 
-    \func distributeExtends {_ : Language} {c c' c'' : Context} {s : Substitution c c'} {s' : Substitution c' c''} :
+    \private \func distributeExtends {_ : Language} {c c' c'' : Context} {s : Substitution c c'} {s' : Substitution c' c''} :
       (\lam v => substituteTerm (Extend.extends s v) (Extend.extends s')) = {Substitution (suc c) (suc c'')}
       Extend.extends (\lam v => substituteTerm (s v) s') => ext (helper s s')
       \where {

@@ -5,6 +5,7 @@
 \import Paths
 \import Paths.Meta
 \import Set
+\import Set.Subset (single)
 \import decidable.DecLanguage
 \import proof.Proof
 \import syntax.Context
@@ -45,7 +46,9 @@
   \func Zero {c : Context} : Term {LNN} c => apply LNN.Zero nil
 
   \func Succ {c : Context} (x : Term c) : Term {LNN} c => apply LNN.Succ (x :: nil)
+
   \func One {c : Context} : Term {LNN} c => Succ Zero
+
   \func Two {c : Context} : Term {LNN} c => Succ One
 
   \func Plus {c : Context} (x x' : Term c) : Term {LNN} c => apply LNN.Plus (x :: x' :: nil)
@@ -96,5 +99,22 @@
 
     \func prfSuc/= {a b : Term 0} (h : Prf NN (notH (equal a b)))
       : Prf NN (notH (equal (Succ a) (Succ b))) =>
-      {?}
+      \let
+        | instance : Prf NN (impH (equal (Succ a) (Succ b)) (equal a b)) => run {
+          forAllElim _ (AXM $ inP (1, idp)) a,
+          forAllElim _ (AXM $ byRight idp) b,
+          AXM $ byRight $
+                pmap2 (\lam x y => impH (equal (Succ x) _) (equal y _))
+                    subsLiftTerm
+                    subsLiftTerm
+        }
+      \in notHFromimpH _ h instance idp
+
+    \private \func subsLiftTerm {_ : Language} {c : Context} {a b : Term c}
+      : Substitution.substituteTerm (liftTerm 1 a) (Substitution.substOne b) = a
+    \elim a
+      | var v => rewrite (\peval liftTerm _ _) idp
+      | apply f args => rewrite (\peval liftTerm _ _) $ pmap (apply f) (ext (ext (\lam j =>
+          rewrite (\peval  liftTerm _ _) in subsLiftTerm {_} {c} {args j} {_}
+      )))
   }
