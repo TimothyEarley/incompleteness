@@ -1,16 +1,25 @@
+\import Logic
 \import NaturalNumberTheory.NN
 \import NaturalNumberTheory.NNModel
+\import Paths
 \import semantics.Interpretation
 \import syntax.Syntax
 
-
 \module NN_Examples \where {
   \open LNN_Syntax
+  \open Interpretation
 
-  \lemma one+one=2 : NN Interpretation.⊧I equal (Plus One One) Two
-    => {?}
+  -- TODO also do this with Prf
 
-  \lemma one+one=2-model : NNInterpretation Interpretation.⊧ equal (Plus One One) Two
-    => idp
+  \lemma one+one=2 : NN ⊧I equal (Plus One One) Two => \lam (I : Interpretation 0) m =>
+      \let
+        | add_rule_suc => m (inP (3, idp))
+        | add_rule_0 => m (inP (2, idp))
+      \in
+        evaluate I (Plus One One)           ==< add_rule_suc _ _ >==
+        evaluate I (Succ (Plus One Zero))   ==< pmap (\lam x => I.structure.fun LNN.Succ (x :: nil)) (add_rule_0 _) >==
+        evaluate I (Succ One)               ==< idp >==
+        evaluate I Two `qed
 
+  \lemma one+one=2-model : NNInterpretation ⊧ equal (Plus One One) Two => idp
 }
